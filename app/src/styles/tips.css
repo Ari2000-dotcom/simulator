@@ -1,0 +1,52 @@
+/*
+ * The hover tip every `title="…"` in the app shows (shell/titleTips.ts) in place
+ * of the browser's own black box with its white frame, which no stylesheet can
+ * reach. The same surface as the menus and MUI tooltips: popup ground, one
+ * hairline, a soft lift, caption text.
+ */
+.qd-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483000;
+  max-width: 380px;
+  padding: 6px 10px;
+  background: var(--qd-tip-bg);
+  border: 1px solid var(--qd-tip-border);
+  border-radius: var(--qd-radius);
+  box-shadow: var(--qd-tip-shadow);
+  color: var(--qd-text-primary);
+  font-family: inherit;
+  font-size: var(--qd-size-caption);
+  font-weight: var(--qd-weight-regular);
+  line-height: 1.45;
+  letter-spacing: var(--qd-tracking-body, normal);
+  /* A title's own line breaks (a list of notes) are kept; long lines wrap. */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity var(--qd-dur-fast) var(--qd-ease),
+    transform var(--qd-dur-fast) var(--qd-ease);
+}
+
+.qd-tip[data-shown] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Placed above its anchor: it rises in from below instead. */
+.qd-tip[data-above] {
+  transform: translateY(-2px);
+}
+.qd-tip[data-above][data-shown] {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qd-tip {
+    transition: none;
+  }
+}

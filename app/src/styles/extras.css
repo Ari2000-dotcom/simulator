@@ -1,0 +1,12 @@
+/* OPTLAB additions on top of QuantDesk's tokens.css (copied verbatim, do not edit that file). */
+:root {
+  --qd-wash: 255 255 255;
+  --qd-shade: 0 0 0;
+  --qd-footer-h: 26px;
+  --qd-hover: rgb(var(--qd-wash) / var(--qd-hover-wash-alpha));
+  --qd-zebra: rgb(var(--qd-wash) / 2%);
+  --qd-row-hair: rgb(var(--qd-wash) / 6%);
+}
+:root[data-theme="light"] {
+  --qd-wash: 0 0 0;
+}

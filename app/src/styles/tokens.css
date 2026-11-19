@@ -1,0 +1,2050 @@
+/*
+ * The design tokens, once.
+ *
+ * Two themes live here under the same variable names, switched by `data-theme` on
+ * <html> (owned by theme/mode.tsx). DARK is Zerodha Kite's own palette, lifted from
+ * its live app (kite.zerodha.com, 2026-09-19): app bg #181818, buy blue #4987EE,
+ * sell orange #D4603B, gain/loss text #5B9A5D/#E25F5B, ITM wash rgba(255,143,0,.05).
+ * LIGHT is Creative Tim's Paper Dashboard React, measured the same way: white
+ * cards, teal/mint/gold/coral accents, Montserrat-weight greys. A colour that
+ * drifts between the two modes, or between this file and its source, is a colour
+ * that has to be argued about twice — so nothing here is eyeballed.
+ *
+ * The STRUCTURE underneath both palettes — the elevation ladder, the three text
+ * contrast bands (glance/read/reference), tabular numerals — predates this repaint
+ * and stays: those were fatigue fixes earned across real sessions, and a repaint
+ * is not a reason to re-fight them. Only hue and lightness targets move; the bands
+ * they were built to hit do not.
+ *
+ * APPLE LAYER (2026-09-19, measured off apple.com — docs/design/apple.com.md): the
+ * text greys, accent/link/focus blue, pill buttons, the segmented tab control and
+ * the tracking/weight rules are Apple's, mapped onto the contrast bands above. The
+ * container itself — grounds, borders, glow, padding, gutters, the dock tab's shape
+ * and the active-container outline — is deliberately NOT part of it, and neither are
+ * the data colours (call/put, P&L, OI buildup).
+ *
+ * WPF (the sibling wpf-terminal tree) writes #AARRGGBB. Where alpha is not FF it
+ * is written here as rgb(... / a) so the exact alpha survives the port.
+ */
+
+/* Inter 4.001, the 18pt OPTICAL SIZE (Google Fonts' `static/Inter_18pt-*`).
+   Inter 4 carries an `opsz` axis and ships static cuts at 18/24/28pt. This app's
+   text is 11–15px, and the smaller optical size is the one drawn for it: looser
+   spacing and more open apertures, where the 24/28pt cuts are tuned for display
+   sizes and go tight and fragile down here. The files keep their plain names so
+   nothing outside this block has to know which cut is installed.
+
+   Only the two Apple weights are registered. A stray 500 or 700 in a style then
+   resolves to 400/600 by the browser's own weight matching instead of rendering
+   a third weight — the rule enforces itself. */
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/Inter-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/Inter-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: block;
+}
+
+:root {
+  /*
+   * Native controls follow this, not the tokens: a `type="date"` or
+   * `type="time"` field draws its calendar/clock glyph and its popup from the
+   * browser's own scheme, so without it they render light-on-light in the dark
+   * theme and the icon simply vanishes.
+   */
+  color-scheme: dark;
+
+  /*
+   * -- geometry, spacing and type: theme-invariant ---------------------
+   *
+   * Inter stays in both modes even though Paper Dashboard ships Montserrat: the
+   * `qd-num` tabular-figure setup below depends on Inter's tnum feature so a
+   * ticking price doesn't shift its decimal point, and that guarantee is worth
+   * more than a font match. Everything else about Paper Dashboard's type (the
+   * grey ladder, the weight) carries over; the family does not.
+   */
+  --qd-container-pad: 4px; /* was 10px, then 6px; tightened again for container room 2026-10-10 */
+  --qd-field-gap: 10px;
+  --qd-label-gap: 4px;
+  --qd-group-pad: 8px;
+  --qd-group-gap: 8px;
+  --qd-strip-pad-x: var(--qd-container-pad); /* was 10px; one inset for every header, 2026-09-24 */
+  /* Tables: two row heights only. --qd-row-h is an EDITABLE row (inputs in cells);
+     --qd-data-row-h is every read-only data row. Header rows are --qd-cell-h.
+     Header and body cells share --qd-cell-pad-x so headings sit over their values. */
+  --qd-row-h: 34px;
+  --qd-data-row-h: 32px;
+  --qd-cell-h: 28px;
+  /* The portfolio book reads one step up the type scale (14/13 rather than
+     13/12), so its rows carry the extra leading that needs. Scoped to the book
+     rather than raised globally: every other table is still on 13. */
+  --qd-book-row-h: 34px;
+  --qd-book-cell-h: 30px;
+  --qd-cell-pad-x: 8px;
+  /* Every panel's top toolbar strip (components/PanelBody.tsx PanelToolbar). */
+  --qd-toolbar-gap: 8px;
+
+  --qd-band-h: 26px;
+  /* Header strips keep their height; only the controls in them are smaller
+     (2026-09-25, on request), centred with equal space above and below. PanelToolbar
+     and NavBar re-point --qd-control-h at --qd-toolbar-control-h, so a button, field
+     or segmented track in a header shrinks with no per-panel edit, and the same
+     control in a form body stays 26. */
+  /* 36, not 44 (2026-10-10, more room for the containers): its 1px rule leaves 35px,
+     and the 23px controls centre there 6px above and below — whole pixels still. */
+  --qd-nav-h: 36px;
+  /* The index ticker's own strip, under the nav bar (2026-10-21, on request: the ticker in a
+     row of its own, not squeezed between the nav's controls). 12px figures need no more. */
+  --qd-ticker-h: 28px;
+  /* The dock's tab strip over every container (28 until 2026-10-10): 12px labels need no more. */
+  --qd-dock-tab-h: 26px;
+  --qd-header-h: 32px;
+  /* The chart family's strip (PanelToolbar `strip`: Chart, Total OI, Straddle Lab)
+     breathes more on request (2026-09-25): 36px puts its 23px controls 6px above
+     and below the rule, still whole pixels. */
+  --qd-strip-h: 36px;
+  --qd-control-h: 26px;
+  /* Odd on purpose: a header's bottom rule takes its last pixel, leaving 31px (nav:
+     35px) above it, and only an odd control centres there on whole pixels — 4px
+     above and below (nav: 6/6). An even one lands on a half pixel and blurs. */
+  --qd-toolbar-control-h: 23px;
+  /* Three radii only: small (menu items, tooltips, chips inside cells, checkboxes
+     use 3px via --qd-radius-check), control (fields, chips, readouts), pill (buttons). */
+  --qd-radius-check: 3px;
+  --qd-radius-small: 4px;
+  --qd-radius: 6px;
+  --qd-radius-container: 8px;
+  --qd-icon-size: 16px; /* icons in chrome and toolbars */
+  --qd-icon-size-field: 14px; /* icons inside fields and cells */
+  --qd-gutter: 8px;
+  --qd-rail: 12px;
+
+  /* Inter, then the generic. Segoe UI and system-ui were in this list and are
+     deliberately gone: naming a specific system face as the fallback means a
+     machine where Inter has not finished loading renders a DIFFERENT typeface
+     with different metrics, which is the "hazy"/wrong-font report every time.
+     Both Inter faces are bundled and `font-display: block` above holds text
+     back until they load, so the generic is a formality, not a real fallback. */
+  --qd-font: "Inter", sans-serif;
+
+  /*
+   * -- raised surfaces -------------------------------------------------
+   *
+   * A physical button face: a light-to-dark gradient, a bright inner lip along
+   * the top edge, a dark outer edge and a hard shadow under it.
+   *
+   * Every value is an ALPHA over whatever is behind it, never a literal tone.
+   * That is what lets one set serve all seven canvas themes — a raised control
+   * on Steel's #262626 and on Plum's #1f1b23 both pick up their own ground —
+   * instead of seven copies that drift apart the first time one is edited.
+   *
+   * The shadows are all offset with ZERO blur. A blurred shadow under a 16px
+   * glyph is the "hazy" failure this project has chased before; a hard 1px
+   * offset reads as depth and stays pixel-crisp at any DPI.
+   */
+  --qd-raise-face-top: rgb(255 255 255 / 11%);
+  --qd-raise-face-bottom: rgb(255 255 255 / 3%);
+  --qd-raise-gloss: rgb(255 255 255 / 15%);
+  --qd-raise-edge: rgb(0 0 0 / 48%);
+  --qd-raise-shadow: rgb(0 0 0 / 55%);
+  /* Raised TEXT on a dark ground casts its shadow below. */
+  --qd-raise-text: rgb(0 0 0 / 72%);
+
+  /*
+   * Applied here as well as through the MUI theme, and not only for tidiness.
+   * A popped-out window (popout.html) boots no app of its own — dockview clones
+   * the opener's stylesheets into it. This file is one of them, so putting the
+   * family on :root means a pop-out is on Inter from its own stylesheet rather
+   * than depending on emotion's injected `body` rule having been cloned too.
+   */
+  font-family: var(--qd-font);
+  --qd-size-title: 15px;
+  /* Home's headline figures only (2026-09-30: "Home looks faded, no feel"):
+     an index price, an ATM IV, a day's FII net — the number the eye should
+     land on first. Never in a container, a table or a toolbar. */
+  --qd-size-figure: 18px;
+  --qd-size-display: 20px;
+  --qd-size-body: 14px;
+  --qd-size-control: 13px;
+  --qd-size-caption: 12px;
+  --qd-size-micro: 11px;
+  /* Role sizes — the hierarchy by ROLE, the way pro terminals fix it once
+     (2026-10-10, "toolbars and chart tips are too big"). Each points at a rung of
+     the ladder above; none adds a size. Inter draws large for its px (x-height
+     0.55 vs Segoe's 0.50), so Inter 12 already reads like a terminal's 13.
+       chrome — everything in a header strip and the nav bar: 12. PanelToolbar,
+                NavBar and the replay bar re-point --qd-size-control at it, so
+                no control in a header sets its own size. A strip's title is
+                the same 12, set apart by 600 and the strongest ink, not size.
+       data   — table and list content: --qd-size-control 13 (unchanged).
+       tip    — chart crosshair tips and axis labels: 11. */
+  --qd-size-chrome: var(--qd-size-caption);
+  --qd-size-tip: var(--qd-size-micro);
+  /* A container's subject (its underlying's name) in the header. The chrome size, like
+     everything else on the strip: one size per header row (2026-10-16, on request, "one size
+     and text size"). It stands out by weight and ink, not size. Was a size up (13) from
+     2026-10-10. */
+  --qd-size-subject: var(--qd-size-chrome);
+  /* A data header's chip edge: the field edge of whichever theme is on, so a chip reads as a
+     control as clearly as an input does. */
+  --qd-chip-border: color-mix(in srgb, var(--qd-edit-border) 65%, transparent);
+  /* A chart's tool band: the well's own ground and a hair under it (#121213 in dark), so the bar
+     reads as the chart's own, black over the plot. It was half way from the container's ground to
+     the well's (#151616), three levels off the plot; light keeps that mix (2026-10-22). */
+  --qd-chart-toolbar-bg: color-mix(in srgb, var(--qd-surface-0), #000 8%);
+  /*
+   * The header console (2026-10-11, "toolbars still not professional"). A control's surface
+   * says what it is: a WELL (recessed) is somewhere you type or pick inside — the symbol field,
+   * a segmented track; FLAT text is a picker that opens a menu; a KEY (raised) is on, open or
+   * an action. All zero-blur edges, so they stay crisp at 4K.
+   */
+  --qd-tb-well: color-mix(in srgb, var(--qd-container-surface), #000 32%);
+  --qd-tb-well-edge: color-mix(in srgb, var(--qd-nav-divider) 70%, transparent);
+  --qd-tb-key: color-mix(in srgb, var(--qd-nav-selected-bg), #fff 4%);
+  --qd-tb-key-hi: rgb(255 255 255 / 7%);
+  --qd-tb-key-lo: rgb(0 0 0 / 55%);
+  /* The subject's notch: the brand's own colour, on the one name a strip is about. */
+  --qd-tb-mark: var(--qd-band);
+  /*
+   * Header text (2026-10-16, "uneven, too faint"). Every word in a header strip sits on ONE line
+   * box, so buttons (MUI's 1.75 = 21px), tabs and readouts (1.5 = 18px) stop landing half a pixel
+   * apart. 17px is odd on purpose: it centres on whole pixels in the strip's 23px controls and its
+   * 31px row. Four inks, by role, drawn from the text ladder so every theme and palette follows:
+   *   subject — the strip's one name (600):            strong
+   *   on      — a picked tab, an open picker, a tool on: strong, on a raised key
+   *   ink     — every ordinary control at rest:         primary (was secondary/tertiary: too faint)
+   *   quiet   — captions, hints, times, counts, carets: secondary (was tertiary)
+   * No tier is brighter than the ladder's strong, so nothing glares.
+   */
+  --qd-tb-leading: 17px;
+  --qd-tb-ink-subject: var(--qd-text-strong);
+  --qd-tb-ink-on: var(--qd-text-strong);
+  --qd-tb-ink: var(--qd-text-primary);
+  --qd-tb-ink-quiet: var(--qd-text-secondary);
+
+  /*
+   * Apple's type rules, carried onto Inter (SF Pro is licensed for Apple platforms
+   * only, and `qd-num` depends on Inter's tnum). Two weights, nothing between —
+   * apple.com uses exactly 400 and 600. Tracking is Apple's own per-size value in
+   * em (17px −0.374px, 14px −0.224px, 12px −0.12px), interpolated for 13 and 15.
+   */
+  --qd-weight-regular: 400;
+  --qd-weight-emphasis: 600;
+  --qd-tracking-title: -0.018em;
+  --qd-tracking-body: -0.016em;
+  --qd-tracking-control: -0.013em;
+  --qd-tracking-caption: -0.01em;
+  --qd-tracking-micro: 0em;
+  /* The same ladder as ONE expression of the element's own size, for the global
+     rule in theme.ts: 11px −0.06, 12px −0.11, 13px −0.17, 14px −0.22, 15px −0.28
+     (each within 0.01px of the per-size tokens above). Tracking set once on body
+     in `em` computes to a fixed px there, which every descendant then inherits —
+     11px text was tracked as tight as 14px (−0.182px). */
+  --qd-tracking-auto: calc(0.55px - 0.055em);
+  /* Leading: two, not fifteen. `tight` for a line that never wraps (a figure, a
+     label, a heading over a value); `text` for a sentence that can wrap (a
+     notice, an empty state's detail, a dialog's explanation). `1` stays legal for
+     an icon box that must not add a line box's height. */
+  --qd-leading-tight: 1.25;
+  --qd-leading-text: 1.5;
+
+  /* Apple's easing, exact: cubic-bezier(0.4,0,0.6,1) on every colour/background
+     change; the tab pill slides on ease-out. */
+  --qd-ease: cubic-bezier(0.4, 0, 0.6, 1);
+  /* Quick by design (2026-10-21, on request: "things pop up very late"): a hover or a press
+     answers in 100 ms, a state change in 150, a slide in 200. They were 160, 240 and 320. */
+  --qd-dur-fast: 100ms;
+  --qd-dur: 150ms;
+  --qd-dur-slide: 200ms;
+
+  /*
+   * -- entrance and exit -----------------------------------------------
+   *
+   * The curve above is Apple's system ease, measured from apple.com and
+   * recorded in docs/design/apple.com.md. It is symmetric, which is right for a
+   * hover or a colour change but wrong for something ARRIVING: an element that
+   * enters should decelerate into place and leave without lingering. Hence a
+   * pair of one-way curves either side of it.
+   *
+   * `--qd-ease-out` is a straight decelerate — fast at the start, settling at
+   * the end. `--qd-ease-spring` overshoots very slightly (the 1.02 in the
+   * third control point) so a panel lands with a hint of weight rather than
+   * stopping dead. It is deliberately a small overshoot: a bouncy trading
+   * terminal reads as a toy, and the desk watches these open dozens of times a
+   * day.
+   *
+   * Exits are FASTER than entrances (--qd-dur-exit < --qd-dur-enter). Waiting
+   * for something to leave is dead time; waiting for something to arrive is the
+   * thing itself.
+   */
+  --qd-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --qd-ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1.02);
+  --qd-dur-enter: 160ms;
+  --qd-dur-exit: 100ms;
+  /* A menu or popover rising out of its control: the whole of it, fully there in 110 ms. */
+  --qd-dur-pop: 110ms;
+  /* Row hover wash strength, over --qd-row-hover-wash. */
+  --qd-hover-wash-alpha: 3.5%;
+
+  /* Apple's buttons are pills (radius 980px on apple.com). */
+  --qd-radius-button: 980px;
+
+  /*
+   * ============================================================
+   * DARK — Zerodha Kite's palette, hue-mapped onto this app's ladder.
+   * ============================================================
+   */
+
+  /* -- elevation ladder ----------------------------------------------- */
+  --qd-surface-0: #131415; /* Kite's own well colour (its add-widget bg) */
+  --qd-surface-1: #181818; /* Kite's own app bg — this app's container interior */
+  --qd-surface-2: #222222; /* Kite's own header-widget bg, exact */
+  --qd-surface-3: #2b2b2b;
+  /* The Position Tracker's underlying shelves (option A, 2026-10-17): a step off the rows, the faintest violet in it. */
+  --qd-shelf-ground: #1d1c22;
+  --qd-chart-frame-bg: var(--qd-container-surface); /* the containers' own #181818 — chart matches every other pane */
+
+  /*
+   * -- ground lighter, container the dark object — on request, 2026-09-19 --
+   *
+   * Reverted back: the background/canvas reads as grey, and containers stay
+   * the dark object sitting on it. (Kite's own app-wrapper is in fact darker
+   * than its panels — measured #111111 vs #181818 — but that relationship was
+   * tried here and explicitly rejected in favour of this app's own established
+   * ground-lighter ladder.)
+   */
+  --qd-bg-app: #242424; /* nav bar and the dock's tab strip — chrome */
+  --qd-bg-workspace: #272727; /* lighter canvas (was #222222), on request 2026-09-21 — the #181818 containers lift off it */
+  --qd-bg-panel: #181818; /* the container interior — Kite's own base tone */
+  --qd-container-surface: #181818;
+
+  /* The dock in Kite's workstation view uses a quiet neutral perimeter for every
+     pane, then promotes the focused pane to its blue outline. */
+  --qd-container-border: #343434;
+  --qd-container-header-bg: transparent;
+  --qd-container-header-divider: rgb(255 255 255 / 12.2%);
+  /* Where a container's header ends and its content begins (2026-10-22, on request: the header
+     bar "a bit more separate from the inside content"). The rule under the header is a step
+     brighter than a card's hairline (a strip's, and a data header's own), and the content takes a
+     three-row cast just below it: 34%, 18% and 7% black, hard-edged rows so it is crisp at any
+     scale, never a blur. Each look that draws its own header edge sets all three back. */
+  --qd-strip-edge: #3a3a3a;
+  --qd-header-rule: rgb(255 255 255 / 14.5%);
+  --qd-strip-cast: linear-gradient(to bottom, rgb(0 0 0 / 34%) 0 1px, rgb(0 0 0 / 18%) 1px 2px, rgb(0 0 0 / 7%) 2px 3px);
+  --qd-container-glow: #181818;
+  --qd-container-glow-centre: #181818;
+  --qd-container-glow-edge: #181818;
+  --qd-container-shadow: none;
+  /* Kite's own focused-container border, exact: its accent blue at 60%. */
+  /* Indigo (user, 2026-10-17), its own colour: not the dock blue, and not --qd-accent. */
+  --qd-container-active-border: rgb(99 102 241 / 75%);
+  --qd-dock-accent: #4987ee;
+  --qd-dock-accent-rgb: 73 135 238;
+  --qd-dock-radius: 6px;
+  /* Kite's own splitter track, measured: 4px, coloured by the canvas underneath
+     it (not the panel) — panels don't touch, they float on the same dark gap
+     that the earlier "canvas vs container" ladder already gives this app. */
+  --qd-dock-gutter: 3px; /* was 6px; tightened twice on request 2026-09-20 */
+
+  /* -- text ladder: Apple's named greys, each chosen for its band on #181818 --
+     Apple's neutrals lean +2 blue (#f5f5f7, #86868b) — never pure grey. */
+  --qd-text-strong: #e8e8ed; /* 14.5:1 — glance band */
+  --qd-text-primary: #c7c7cc; /* 10.5:1 — read band */
+  --qd-text-secondary: #a1a1a6; /* 6.9:1 — reference band, top (apple.com's grey on dark) */
+  --qd-text-tertiary: #86868b; /* 4.9:1 — reference band; Apple's secondary grey. The old #7a7a7a was 4.1, under the band */
+  --qd-text-muted: #86868b;
+  --qd-text-disabled: #636366;
+
+  --qd-chrome-primary: #c7c7cc;
+  --qd-chrome-secondary: #a1a1a6;
+  --qd-chrome-muted: #86868b;
+
+  /* -- identity band: QuantDesk's own mark, not a theme value ---------- */
+  --qd-band: #a3243a;
+  --qd-band-border: #651326;
+  --qd-band-text: #f7eceb;
+  --qd-scrim: rgb(0 0 0 / 55%);
+  --qd-window-shadow: 0 18px 48px rgb(0 0 0 / 45%);
+  /* Hover tips (shell/titleTips.ts): a small lift, softer than a window's. */
+  --qd-tip-shadow: 0 6px 20px rgb(0 0 0 / 50%), 0 1px 3px rgb(0 0 0 / 40%);
+  /* A grey-inside container's own ground (Position Tracker): between the black
+     headers and the #272727 workspace, so the container still reads as one
+     against the workspace around it, and its account blocks lift off it. */
+  --qd-well-bg: #232323; /* was #1f1f1f; a touch lighter on request 2026-09-26, still under the #272727 workspace */
+  --qd-well-edge: #343434;
+  /* The Position Tracker's P&L well. Was --qd-surface-0 (#131415), only 5 steps
+     under the #181818 rows; beside the darker well grey it stopped reading as a
+     band, so it sits deeper now (2026-09-26, on request). */
+  --qd-pnl-well: #0e0f10;
+  --qd-tip-bg: #262626; /* a shade above the #181818 containers, so it lifts off them */
+  --qd-tip-border: #3a3a3a;
+  /* A chart's tooltip card and readouts, Apple's way (2026-10-14, "softer, like Apple"): the
+     card is frosted glass — each palette's own tip ground a little see-through, the chart
+     blurred behind it, a fainter hairline — and figures read in the softer value ink with
+     the calm candle pair for gains and losses. Built from the palette tokens, so every
+     palette and both modes follow. */
+  --qd-tip-glass: color-mix(in srgb, var(--qd-tip-bg) 82%, transparent);
+  --qd-tip-glass-edge: color-mix(in srgb, var(--qd-tip-border) 65%, transparent);
+  --qd-tip-blur: blur(14px) saturate(150%);
+  --qd-readout-value: var(--qd-text-primary);
+  /* A readout's up/down is the gain/loss text pair (2026-10-16 audit: one green and one red for
+     text, the candles' own pair for candles; the soft pair is the Soft candle style's alone). */
+  --qd-readout-up: var(--qd-positive);
+  --qd-readout-down: var(--qd-negative);
+  /* Bumblebee, the chart's in-house decision tool: its mark and its chat surfaces.
+     A brand colour, not a data colour — it never marks a figure. */
+  --qd-bee-body: #f2b705;
+  --qd-bee-stripe: #1b1b1d;
+  --qd-bee-wing: rgb(214 228 255 / 80%);
+  --qd-bee-wing-edge: rgb(255 255 255 / 60%);
+  --qd-bee-button: #2a2a2c;
+  --qd-bee-button-edge: #4a4a4e;
+  --qd-bee-bubble: #2a2a2c;
+  --qd-bee-bubble-you: #34343a;
+
+  /* -- accent and state, straight from Kite's buy/sell/P&L colours ---- */
+  --qd-accent: #2997ff; /* Apple's link blue on dark, exact — 5.9:1 on #181818 */
+  --qd-amber: #ff8f00; /* Kite's ITM highlight base, exact */
+  /* Amber as TEXT (a pinned past session's label). The dark amber already reads at 7.8:1 on the strip. */
+  --qd-amber-text: var(--qd-amber);
+  --qd-positive: #5b9a5d; /* Kite's gain text, exact */
+  --qd-negative: #e25f5b; /* Kite's loss text, exact */
+  --qd-status-disconnected: #6b6b6b;
+  --qd-status-connecting: #e0a83f;
+  --qd-status-connected: #4fae6a;
+  --qd-error-text: #e25f5b;
+  --qd-error-border: #7a3a38;
+  --qd-danger-hover-bg: #4a2422;
+  --qd-danger-hover-text: #f5f5f7;
+
+  /* Call leans on Kite's buy blue, put on its sell orange — the two states a
+     trading terminal already asks Kite's own UI to keep apart. */
+  /* Calls green, puts red, everywhere: chains, greek panes, badges, both OI profiles (user,
+     2026-10-16: three pairs were in use, blue/orange, red/green and green/red). A shade off the
+     gain/loss text so a CE badge never reads as a profit. */
+  --qd-call: #46a86b;
+  --qd-put: #e0625e;
+  --qd-per-lot: #a99bd6; /* no Kite equivalent; left as the app's own derived-value hue */
+  /* One dot per broker account (panels/positions/accountColour.ts). Muted, and
+     clear of P&L green/red, call blue, put coral, per-lot violet and warning amber. */
+  --qd-account-1: #4fb3a0; /* teal */
+  --qd-account-2: #cf8aa9; /* rose */
+  --qd-account-3: #a3b46e; /* olive */
+  --qd-account-4: #aba49a; /* stone */
+  --qd-account-5: #8d9db8; /* slate */
+  /* The hairline closing each account's block in the positions table: brighter
+     than the row dividers, so it reads as the end of an account, not a row. */
+  --qd-account-divider: rgb(255 255 255 / 18%);
+  /* The account tile's raised-key look: a lit top edge, a shaded bottom edge,
+     and a small drop shadow onto the header. */
+  --qd-tile-highlight: rgb(255 255 255 / 45%);
+  --qd-tile-shade: rgb(0 0 0 / 35%);
+  --qd-tile-drop: rgb(0 0 0 / 55%);
+  --qd-script-chip-bg: #4a4c72;
+  --qd-script-chip-border: #5d6088;
+  --qd-script-chip-hover: #565980;
+  --qd-script-chip-text: #f0f0f5;
+  --qd-script-chip-muted: #b8b9cc;
+  --qd-script-chip-initial: #d7c8ff;
+  --qd-script-exchange-bg: #343650;
+  --qd-script-exchange-border: #72759c;
+  --qd-script-exchange-text: #e2e2ee;
+
+  --qd-call-rgb: 70 168 107;
+  --qd-put-rgb: 224 98 94;
+  --qd-accent-rgb: 41 151 255;
+  --qd-positive-rgb: 91 154 93;
+  --qd-negative-rgb: 226 95 91;
+  --qd-amber-rgb: 255 143 0;
+  --qd-required-rgb: 207 148 51;
+  --qd-buy-rgb: 111 174 120;
+  --qd-sell-rgb: 207 143 138;
+
+  /* OI buildup: four states, hue-mapped onto Kite's own green/red/amber rather
+     than the previous cool-toned set. Gradient darkness is unchanged — it is
+     still pinned dark so it never competes with the live numbers on top. */
+  --qd-buildup-lb: #3d7a40; /* long buildup */
+  --qd-buildup-lb-from: #0f1f11;
+  --qd-buildup-lb-to: #1c3820;
+  --qd-buildup-sc: #6fbf73; /* short covering */
+  --qd-buildup-sc-from: #1c3820;
+  --qd-buildup-sc-to: #2a4d2e;
+  --qd-buildup-sb: #c8574f; /* short buildup */
+  --qd-buildup-sb-from: #2a1210;
+  --qd-buildup-sb-to: #4a2420;
+  --qd-buildup-lu: #e0954a; /* long unwinding */
+  --qd-buildup-lu-from: #2a1c0c;
+  --qd-buildup-lu-to: #4a3316;
+
+  /* Charts — their own roles, so re-tuning a candle never repaints P&L text. */
+  --qd-chart-bg: var(--qd-container-surface); /* the containers' own #181818, exactly — one source */
+  --qd-chart-grid: #222222; /* faint gridlines, one step above the #181818 canvas */
+  /* The grey ground inside the chart's container, showing through the gap
+     between the black toolbar and the black chart box. var() so the light
+     theme picks up its own workspace tone with no second definition. */
+  --qd-chart-ground: var(--qd-bg-workspace);
+  --qd-chart-axis: #d6d6d6; /* the x/y axis lines: a soft white edge */
+  --qd-chart-axis-y: #8e8e8e; /* the y (price) axis line: a softer, dimmer white, on request */
+  /* Solid, vivid candles on the dark canvas — the trading-terminal look the desk
+     asked for (2026-09-23): full-opacity bodies, wicks and volume in the same two
+     colours. Contrast 6.5:1 (up) and 4.6:1 (down) against the #181818 canvas. */
+  --qd-chart-up: #22b35e;
+  --qd-chart-down: #f23645;
+  /* A money figure's tone (MtmChart's mtmTone): the chart pair here, the softer data pair in Studio. */
+  --qd-mtm-up: var(--qd-chart-up);
+  --qd-mtm-down: var(--qd-chart-down);
+  /* Total OI under the greeks board's candles (2026-10-08, user): green where it grew, red where
+     it fell — a pastel pair apart from the candles' own, drawn faint by the engine. */
+  --qd-chart-oi-rise: #8fd9a8;
+  --qd-chart-oi-fall: #f0a0a0;
+  /* The chart's Opening OI board (2026-10-16, user): OI change over a window of the session per
+     strike. Two hues, the chart OI profile's own (calls red, puts green), so the board and the
+     bars beside it read alike; added full strength left of each side's zero line, cut at half
+     strength right of it. No card: it stands on the plot. The zero lines a warm hue of their own,
+     apart from both bar hues. The band marks the window on the price pane: neutral, a breath over
+     the ground, never a hue. */
+  --qd-chart-opening-call: var(--qd-chart-oi-call-add);
+  --qd-chart-opening-put: var(--qd-chart-oi-put-add);
+  --qd-chart-opening-zero: rgb(232 184 92 / 60%);
+  --qd-chart-opening-rule: rgb(255 255 255 / 8%);
+  --qd-chart-opening-wash: rgb(255 255 255 / 6%);
+  --qd-chart-opening-band: rgb(255 255 255 / 3.5%);
+  /* The same pair as channels, for tinted chips and washes (Home's up/down). */
+  --qd-chart-up-rgb: 34 179 94;
+  --qd-chart-down-rgb: 242 54 69;
+  /* Home's up/down as TEXT — checked against WCAG AA (4.5:1) on the ground AND
+     on its own 14% chip (2026-09-30, AccessLint-style pass): the chart red read
+     4.00:1 on its chip, so text takes a lighter red. Lines and fills keep the
+     chart pair, which only needs 3:1 as a graphic. */
+  --qd-home-up-text: #22b35e; /* 6.49 ground · 5.28 chip */
+  --qd-home-down-text: #ff5560; /* 5.68 ground · 4.99 chip */
+  --qd-candle-filled-up: var(--qd-chart-up);
+  --qd-candle-filled-down: var(--qd-chart-down);
+  /* The candle engine's own chrome (chart/candle, 2026-09-30). Gridless by
+     default, so price levels read off a two-tier axis: majors in
+     --qd-text-strong, minors in this quieter tier — one step under tertiary on
+     purpose, a level you can find rather than one that competes with a wick. */
+  --qd-chart-label-minor: #5f5f64;
+  --qd-chart-crosshair: #4d4d52; /* the dashed crosshair rules: guides, not data */
+  /* The grid's major tier — the rules under the emphasised price labels and on
+     day boundaries; the minor tier is --qd-chart-grid. */
+  --qd-chart-grid-major: #29292d;
+  /* A study's zero line (the greeks' change since the open): a reference the eye has to find
+     at once, so a clear step over both grid tiers — it read as one more gridline at
+     --qd-chart-grid-major (2026-10-05, on request: "show me the zero line properly"). */
+  --qd-chart-zero: #6e6e74;
+  /* The plot's edge against the price and time axes — a seam, not a white rule. */
+  --qd-chart-edge: #2c2c31;
+  /* The candle engine's ground. Flat, as openmarket.xyz's is (measured
+     2026-09-30: one colour, no gradient, no grain) — the calm comes from
+     proportion and restraint, not texture. The knobs stay: a top/bottom pair
+     that differ draws a fall between them, and a --qd-chart-grain above 0 lays
+     device-pixel noise over it (0.035 was tried: a surface, not a fill). */
+  --qd-chart-bg-top: var(--qd-chart-bg);
+  --qd-chart-bg-bottom: var(--qd-chart-bg);
+  --qd-chart-grain: 0;
+  --qd-chart-legend-border: rgb(255 255 255 / 6%);
+  /* The OHLC readout's pills: a shade under the canvas, so a row stays legible over candles. */
+  --qd-chart-legend-bg: rgb(12 12 13 / 90%);
+  /* Text on a solid price tag: whichever of these reads better on the tag's
+     fill is picked per fill (dark on a light green, light on a deep red). */
+  --qd-chart-ink-dark: #111114;
+  --qd-chart-ink-light: var(--qd-primary-text);
+  --qd-badge-on-error: #111114; /* on dark's bright error red */
+  /* The nav ticker's index names (shell/FeedStrip.tsx). */
+  --qd-feed-symbol: var(--qd-chrome-muted);
+  /* OI Analyzer's bars (panels/oi/StrikeLadder.tsx): fill colour and the
+     fill's two ends. Dark draws them in the data colours themselves. */
+  --qd-oi-bar-call-rgb: var(--qd-call-rgb);
+  --qd-oi-bar-put-rgb: var(--qd-put-rgb);
+  /* Its text, bar tips, headings and wall tags. */
+  --qd-oi-call-ink-rgb: var(--qd-call-rgb);
+  --qd-oi-put-ink-rgb: var(--qd-put-rgb);
+  --qd-oi-bar-faint: 12%;
+  --qd-oi-bar-solid: 72%;
+  /* "Soft" candles (gear menu): a calmer pair for all-day watching, the same
+     lightness on both sides so neither direction shouts. Vivid stays default. */
+  --qd-chart-up-soft: #7cb599;
+  --qd-chart-down-soft: #c0727a;
+  /* The crosshair price tag is the brightest thing on the chart — an inverted
+     chip — because it is the one value being asked for right now. */
+  --qd-chart-tag-bg: var(--qd-text-strong);
+  --qd-chart-tag-text: var(--qd-chart-bg);
+  /* The OI profile (2026-09-30, from a Kite/TradingView screenshot): per-strike bars hung off the
+     price axis, deliberately muted, a step under the candles they sit behind. Calls green and puts
+     red since 2026-10-16, the app's one call/put convention (it was red/green here and green/red
+     on the greeks board, user's pick); the board's own set of these went with it. */
+  --qd-chart-oi-call: #3f6b48;
+  --qd-chart-oi-put: #7f3a3d;
+  /* Today's part of each OI bar (on request, 2026-09-30: "a new colour for the
+     portion added today"). The bar reads yesterday's close OI in the muted
+     colour from the axis, then what was ADDED today in this brighter step of
+     the same hue at its tip; OI cut today is the muted colour's outline only. */
+  --qd-chart-oi-call-add: #69b07a;
+  --qd-chart-oi-put-add: #d0676c;
+  /* Payoff curves are intentionally lighter than candle colours: broad lines
+     and filled regions occupy much more visual area than a candle body. */
+  --qd-payoff-target: #72adff;
+
+  /* Categorical series ramp — the straddle lab draws up to 8 lines at once, and
+     none of the colours above can serve: call/put, P&L and OI buildup all MEAN
+     something, so a straddle line wearing one would read as a side or a result.
+
+     Built in OKLCH and validated, not eyeballed: one fixed hue order
+     (254, 70, 196, 340, 95, 310, 55, 225) shared by both themes so a series keeps
+     its identity when the theme flips, with only the lightness re-picked per mode.
+     Green (~130-165) and red (~25-40) are deliberately absent — those are this
+     app's up/down colours.
+
+     Both ramps pass all five checks: lightness band, chroma floor, CVD adjacent
+     separation, normal-vision floor and >= 3:1 contrast against the chart surface.
+     Assigned in fixed order and never cycled — a 9th series is not a colour. */
+  /* Re-lit brighter for the dark canvas on request (2026-09-23): the same hue
+     order, lifted so no line reads muddy — the old amber and gold sat at 4-5:1
+     and looked brown. Every colour is now 6-10:1 against #181818. */
+  --qd-series-1: #5aa2ff; /* blue   — the ATM line */
+  --qd-series-2: #f2a93b; /* amber  */
+  --qd-series-3: #2cc9bf; /* teal   */
+  --qd-series-4: #e46fb8; /* magenta*/
+  --qd-series-5: #d8c440; /* yellow */
+  --qd-series-6: #b48cf7; /* violet */
+  --qd-series-7: #ff8f4a; /* orange */
+  --qd-series-8: #45c8f2; /* cyan   */
+  /* Decay tracker case colours (bRODHa's twelve): none reads as a pin, the call,
+     the put or the underlying's line. */
+  --qd-decay-1: #a78bfa;
+  --qd-decay-2: #f472b6;
+  --qd-decay-3: #2dd4bf;
+  --qd-decay-4: #a3e635;
+  --qd-decay-5: #e879f9;
+  --qd-decay-6: #818cf8;
+  --qd-decay-7: #fde047;
+  --qd-decay-8: #94a3b8;
+  --qd-decay-9: #c2410c;
+  --qd-decay-10: #db2777;
+  --qd-decay-11: #0d9488;
+  --qd-decay-12: #7c3aed;
+
+  --qd-toggle-on-bg: #2c2c2c;
+  --qd-toggle-on-border: #4a4a4a;
+
+  /* Shown only while the pointer is over the scroller (theme.ts). */
+  --qd-scrollbar-thumb: #3c3c3c;
+  --qd-scrollbar-thumb-hover: #585858;
+  --qd-scrollbar-thumb-active: #6e6e6e;
+
+  --qd-buy: #6fae78;
+  --qd-sell: #cf8f8a;
+
+  --qd-live: #e8e8ed;
+  --qd-value: #c7c7cc;
+  --qd-edit-border: #4a4a4a;
+  --qd-required: #cf9433;
+  --qd-focus: #2997ff;
+  --qd-derived: #a99bd6;
+  --qd-inactive: #636366;
+  --qd-group-title: #a1a1a6;
+
+  --qd-nav-text: #a1a1a6;
+  --qd-nav-container-bg: var(--qd-container-surface); /* the header takes the containers' #181818 too, on request 2026-09-21 */
+  --qd-nav-container-border: #333333; /* was #262626, 1.17:1 — the nav pill had no edge */
+  /* The ticker strip under the nav: the nav's own ground, one dark for the whole top of the window
+     (2026-10-21, on request: "use the same dark colour"; it was the nav's colour mixed 38% toward
+     black, a second near-black under the bar). The hairline between them is the only seam. */
+  --qd-ticker-bg: var(--qd-nav-container-bg);
+  --qd-ticker-border: var(--qd-nav-container-border);
+  /* The window's own close button (shell/WindowControls.tsx): Windows' caption red, in both
+     themes, so it reads as the system's close and nothing of the app's. */
+  --qd-window-close-bg: #c42b1c;
+  --qd-window-close-text: #f5f5f7;
+  --qd-nav-icon: #86868b;
+  --qd-nav-hover-bg: #242424;
+  --qd-nav-hover-text: #e8e8ed;
+  --qd-nav-selected-bg: #2a2a2a;
+  --qd-nav-selected-text: #f5f5f7;
+  --qd-nav-selected-border: #4a4a4a;
+  --qd-nav-divider: #333333;
+
+  --qd-tab-text: #a1a1a6;
+  --qd-tab-hover-bg: #202020;
+  --qd-tab-hover-border: rgb(255 255 255 / 22%);
+  --qd-tab-hover-text: #c7c7cc;
+  /* Kite's whole active-tab effect, exact: the tab fills with the SAME colour as
+     its own panel body (not a lighter surface), with a border-top one step up
+     from it (#232325) that is nearly invisible on purpose. The tab strip itself
+     stays on the canvas colour (see the dockview var block below), so only the
+     active tab visually fuses with the content under it. */
+  --qd-tab-active-bg: #181818;
+  /* A non-active container's tab is the SAME #181818 block as its body (Kite's
+     workstation, user's reference screenshot 2026-09-20) — not a lighter grey. */
+  --qd-tab-inactive-bg: #181818;
+  --qd-tab-active-border: #242424;
+  --qd-tab-active-text: #e8e8ed;
+
+  /*
+   * Segmented tabs — Apple's TabNav (apple.com/mac). Light is apple.com exact; dark
+   * is Apple's own dark segmented control (iOS: tertiary fill #767680 @ 24% under a
+   * #636366 selected segment), since apple.com has no dark TabNav to measure.
+   */
+  --qd-seg-track: rgb(118 118 128 / 24%);
+  --qd-seg-pill: #636366;
+  --qd-seg-text: #a1a1a6;
+  --qd-seg-hover-text: #e8e8ed;
+  --qd-seg-active-text: #f5f5f7; /* 5.5:1 on the pill */
+
+  --qd-input-bg: #131415;
+  /* Quieter at rest than an edit outline (2026-10-16 audit: forms like the Simulator's read as a
+     grid of boxes); hover lifts it, focus draws the accent ring. */
+  --qd-input-border: #383838;
+  --qd-input-text: #d2d2d7;
+  --qd-input-placeholder: #6e6e73;
+  --qd-input-focus-bg: #181818;
+  --qd-input-border-hover: #5a5a5a;
+  --qd-form-label: #a1a1a6;
+  /* A ticked checkbox: a solid square in the text's own ink with the tick cut
+     out of it in the container's ground — no blue (2026-09-30, on request).
+     The read-band grey rather than the glance band, so a column of ticked rows
+     does not glare. */
+  --qd-check-fill: var(--qd-text-primary);
+  --qd-check-mark: var(--qd-container-surface);
+
+  /* Buttons: Apple's own button blue, exact, in both modes (apple.com #0071e3,
+     hover #0077ed, pressed #006edb), white label. */
+  --qd-primary-bg: #0066cc; /* was #0071e3 (4.31:1 with the #f5f5f7 label); 5.11:1 — 2026-09-24 */
+  --qd-primary-hover: #006edb; /* 4.53:1 */
+  --qd-primary-pressed: #005bb8; /* 6.05:1 */
+  --qd-primary-text: #f5f5f7; /* nothing pure white — Apple's off-white */
+  --qd-primary-disabled-bg: #2a2a2a;
+  --qd-primary-disabled-text: #6e6e6e;
+  --qd-secondary-bg: #1e1e1e;
+  --qd-secondary-border: #333333;
+  --qd-secondary-hover-bg: #262626;
+  --qd-secondary-hover-border: #555555;
+  --qd-secondary-text: #c7c7cc;
+
+  --qd-row-black: #181818;
+  --qd-row-grey: #1d1d1d;
+  --qd-row-hover: #262626;
+  --qd-row-selected: #1e2a38;
+  --qd-row-active: #1c1c1c;
+  --qd-row-live-text: #d6e0d8;
+  --qd-table-header-top: var(--qd-surface-2);
+  --qd-table-header-bottom: var(--qd-surface-3);
+  --qd-table-header-text: #c7c7cc;
+  --qd-table-details-bg: #131415;
+  /* Lightens a dark row on hover. */
+  --qd-row-hover-wash: #ffffff;
+
+  /* A muted navy in the same low-saturation family as the other row states —
+     the original #1e3a8a was a fully-saturated Tailwind blue that read louder
+     than --qd-row-selected, inverting the precedence ResizableTable's own
+     docstring describes (selected > live > atm > zebra). */
+  --qd-row-atm: #182838;
+  /* Kite's own ITM cue, exact: a 5%-alpha wash of its amber over the row. */
+  --qd-row-itm: rgb(255 143 0 / 9%);
+
+  --qd-popup-bg: #1e1e1e;
+  --qd-popup-border: #333333;
+  --qd-popup-hover: #262626;
+  --qd-popup-selected: #2c2c2c;
+  /* Apple's menu material (2026-10-17, user: "Apple styling for every dropdown in my toolbars"):
+     the popup ground made translucent over a strong blur, a hairline rim outside and a faint
+     highlight inside, a large soft lift; rows highlight in macOS's graphite (a neutral wash, the
+     accent stays rationed). Derived from --qd-popup-bg, so every look's popup follows. */
+  --qd-menu-bg: color-mix(in srgb, var(--qd-popup-bg) 82%, transparent);
+  --qd-menu-blur: blur(24px) saturate(165%);
+  --qd-menu-hover: color-mix(in srgb, var(--qd-text-strong) 12%, transparent);
+  --qd-menu-sep: color-mix(in srgb, var(--qd-text-strong) 11%, transparent);
+  --qd-menu-shadow: 0 0 0 1px rgb(0 0 0 / 55%), inset 0 0 0 1px rgb(255 255 255 / 8%), 0 14px 40px rgb(0 0 0 / 45%), 0 3px 10px rgb(0 0 0 / 25%);
+  --qd-card-bg: #1a1a1a;
+  --qd-card-border: rgb(255 255 255 / 9%);
+  --qd-group-divider: #262626;
+}
+
+/*
+ * ============================================================
+ * LIGHT — Creative Tim's Paper Dashboard React, measured live
+ * (demos.creative-tim.com, 2026-09-19): white cards on a pale grey page,
+ * teal #51BCDA / mint #6BD098 / gold #FBC658 / coral #EF8157, muted text #9A9A9A.
+ * ============================================================
+ */
+/*
+ * LIGHT: "Mist" (2026-10-09, on request: "my white mode is very white, harmful
+ * for the market; make it sober, containers uplifted"). It was Paper Dashboard's
+ * pure white cards on a near-white page. The first Mist cut (#f7f8fa cards, L*
+ * 97.6) still glared in a full day's use ("the white is still very hurtful for
+ * the eyes"), so the whole ladder now sits lower: cards #e6e9ed (L* 92), the
+ * canvas #c9d0d8 (L* 83) so containers lift clearly off it, fields and popups a
+ * step brighter than the card (#eef0f3 / #eceff2) so they still read as
+ * surfaces, and nothing anywhere at pure white. Text and data colours went
+ * darker to match: every tier >= 5:1 on the card, the zebra row, the ATM row
+ * and the fields (the faintest, #4b535d, is 6.4:1 on the card). One sober blue
+ * (#2a5aa6) for accent, focus and the primary button. Comments below that quote
+ * earlier values describe what they replaced.
+ * One step lower again (2026-10-09, "a bit of reduction in my whites"): cards
+ * #dfe3e8 (L* 90), canvas #c2cad3 (L* 81), fields #e7eaee; data colours and the
+ * blue one notch deeper so every one stays >= 4.9:1 on the selected row.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* The same lighting, inverted: the face lifts toward white, the edge and the
+     shadow soften, and raised text takes a WHITE lip below it instead of a
+     black one — the classic light-ground letterpress. */
+  /* Kept light (2026-10-09): at 88% white the face washed the primary blue of
+     "Add widget" out to near white, and a 92% white lip under its white label
+     blurred it. Now a faint sheen over a solid face, and a dark lip under
+     light text, the way dark mode does it. */
+  --qd-raise-face-top: rgb(255 255 255 / 14%);
+  --qd-raise-face-bottom: rgb(0 0 0 / 6%);
+  --qd-raise-gloss: rgb(255 255 255 / 32%);
+  --qd-raise-edge: rgb(16 24 40 / 30%);
+  --qd-raise-shadow: rgb(16 24 40 / 18%);
+  --qd-raise-text: rgb(0 0 0 / 22%);
+
+  --qd-surface-0: #ccd2d9;
+  --qd-surface-1: #dfe3e8;
+  --qd-surface-2: #d8dde3;
+  --qd-surface-3: #cfd5dc;
+  --qd-shelf-ground: #e4e3ec;
+  --qd-chart-frame-bg: var(--qd-container-surface); /* the containers' own white — chart matches every other pane */
+
+  --qd-bg-app: #cfd5dc;
+  --qd-bg-workspace: #c2cad3;
+  --qd-bg-panel: #dfe3e8;
+  --qd-container-surface: #dfe3e8;
+
+  /* No drawn border: a container is told from the canvas by its off-white face
+     and a short shadow, with a hairline ring drawn in dock.css. */
+  --qd-container-border: transparent;
+  --qd-container-header-bg: transparent;
+  --qd-container-header-divider: rgb(16 24 40 / 12%);
+  /* Light: the rules stay as they were; the cast under a header is a hair of cool shadow. */
+  --qd-strip-edge: var(--qd-container-border);
+  --qd-header-rule: var(--qd-container-header-divider);
+  --qd-strip-cast: linear-gradient(to bottom, rgb(16 24 40 / 9%) 0 1px, rgb(16 24 40 / 5%) 1px 2px, rgb(16 24 40 / 2%) 2px 3px);
+  --qd-chart-toolbar-bg: color-mix(in srgb, var(--qd-container-surface), var(--qd-surface-0) 55%);
+  --qd-container-glow: none;
+  --qd-container-glow-centre: #dfe3e8;
+  --qd-container-glow-edge: #dfe3e8;
+  --qd-container-shadow: 0 1px 2px rgb(16 24 40 / 7%), 0 4px 12px -4px rgb(16 24 40 / 12%);
+  --qd-container-active-border: rgb(79 70 229 / 60%);
+  /* The light card's hairline ring and its header band (dock.css). */
+  --qd-container-ring: rgb(16 24 40 / 13%);
+  /* Three steps from the card's header to its data (2026-10-09, on request:
+     "a separation look" for chart containers): the tab strip (L* 86), the
+     chart family's toolbar (L* 89) and the chart itself, the card face (L* 92).
+     The strip is a touch bluer than the canvas so it never merges into it. */
+  --qd-tab-strip-bg: #c9d2dd;
+  --qd-toolbar-bg: #d2d9e1;
+  --qd-toolbar-rule: rgb(16 24 40 / 14%);
+  --qd-dock-accent: #26539a;
+  --qd-dock-accent-rgb: 38 83 154;
+  --qd-dock-radius: 8px;
+  --qd-dock-gutter: 6px; /* was 12px; tightened twice on request 2026-09-20 */
+
+  /* Four text tiers, cool-tinted like the grounds: 15.8 / 11.8 / 7.7 / 5.7:1 on
+     the container face, and the faintest still 4.7:1 on the canvas. */
+  --qd-text-strong: #15191e;
+  --qd-text-primary: #262c33;
+  --qd-text-secondary: #3c434c;
+  --qd-text-tertiary: #4b535d;
+  --qd-text-muted: #4b535d;
+  --qd-text-disabled: #8a919a;
+
+  --qd-chrome-primary: #15191e;
+  --qd-chrome-secondary: #3c434c;
+  --qd-chrome-muted: #4b535d;
+
+  --qd-band: #a3243a;
+  --qd-tb-well: color-mix(in srgb, var(--qd-container-surface), #000 7%);
+  --qd-tb-well-edge: color-mix(in srgb, var(--qd-edit-border) 60%, transparent);
+  --qd-tb-key: color-mix(in srgb, var(--qd-container-surface), #fff 72%);
+  --qd-tb-key-hi: rgb(255 255 255 / 80%);
+  --qd-tb-key-lo: rgb(16 24 40 / 18%);
+  --qd-band-border: #651326;
+  --qd-band-text: #f7eceb;
+  --qd-scrim: rgb(0 0 0 / 55%);
+  --qd-window-shadow: 0 18px 48px rgb(0 0 0 / 45%);
+  --qd-tip-shadow: 0 6px 20px rgb(0 0 0 / 12%), 0 1px 3px rgb(0 0 0 / 10%);
+  --qd-tip-bg: #e5e8ec;
+  --qd-well-bg: #d5dae0;
+  --qd-well-edge: #bcc3cc;
+  --qd-pnl-well: #d1d7de;
+  --qd-tip-border: #bcc3cc;
+
+  --qd-accent: #26539a;
+  --qd-amber: #fbc658; /* Paper Dashboard's own warning gold, exact */
+  /* The gold above is 1.6:1 as text on white; this darker amber of the same hue is 5:1. */
+  --qd-amber-text: #744b00;
+  --qd-positive: #0c6136;
+  --qd-negative: #9a2d1c;
+  --qd-status-disconnected: #737b86;
+  --qd-status-connecting: #fbc658;
+  --qd-status-connected: #278a4f;
+  --qd-error-text: #9a2d1c;
+  --qd-error-border: #d08f80;
+  --qd-danger-hover-bg: #9a2d1c;
+  --qd-danger-hover-text: #fff7f5;
+
+  --qd-call: #1d7a45;
+  --qd-put: #b0352b;
+  --qd-bee-body: #e9a800;
+  --qd-bee-stripe: #1d1d1f;
+  --qd-bee-wing: rgb(196 212 238 / 90%);
+  --qd-bee-wing-edge: rgb(70 80 100 / 35%);
+  --qd-bee-button: #dfe3e8;
+  --qd-bee-button-edge: #b5bcc6;
+  --qd-bee-bubble: #d4dae1;
+  --qd-bee-bubble-you: #cbd4e2;
+  --qd-per-lot: #8a6fc2;
+  --qd-account-1: #2a8a78;
+  --qd-account-2: #b0567f;
+  --qd-account-3: #6e7f33;
+  --qd-account-4: #7a746b;
+  --qd-account-5: #566a8a;
+  --qd-account-divider: rgb(0 0 0 / 14%);
+  --qd-tile-highlight: rgb(255 255 255 / 35%);
+  --qd-tile-shade: rgb(0 0 0 / 25%);
+  --qd-tile-drop: rgb(0 0 0 / 22%);
+  --qd-script-chip-bg: #e5e2f0;
+  --qd-script-chip-border: #c4beda;
+  --qd-script-chip-hover: #d9d4e9;
+  --qd-script-chip-text: #353348;
+  --qd-script-chip-muted: #6f6b88;
+  --qd-script-chip-initial: #7153a8;
+  --qd-script-exchange-bg: #cec9df;
+  --qd-script-exchange-border: #aaa2c8;
+  --qd-script-exchange-text: #49445f;
+
+  --qd-call-rgb: 29 122 69;
+  --qd-put-rgb: 176 53 43;
+  --qd-accent-rgb: 38 83 154;
+  --qd-positive-rgb: 12 97 54;
+  --qd-negative-rgb: 154 45 28;
+  --qd-amber-rgb: 251 198 88;
+  --qd-required-rgb: 201 130 43;
+  --qd-buy-rgb: 12 97 54;
+  --qd-sell-rgb: 154 45 28;
+
+  --qd-buildup-lb: #2e9e56;
+  --qd-buildup-lb-from: #e3f7ea;
+  --qd-buildup-lb-to: #bdeccd;
+  --qd-buildup-sc: #6bd098;
+  --qd-buildup-sc-from: #d7f5e3;
+  --qd-buildup-sc-to: #aee8c6;
+  --qd-buildup-sb: #d65f4a;
+  --qd-buildup-sb-from: #fbe6e0;
+  --qd-buildup-sb-to: #f4c2b4;
+  --qd-buildup-lu: #ef8157;
+  --qd-buildup-lu-from: #fdecd9;
+  --qd-buildup-lu-to: #fad0ac;
+
+  --qd-chart-bg: var(--qd-container-surface);
+  --qd-chart-grid: #d1d7de;
+  --qd-chart-axis: #3a3d42; /* the light theme's mirror of the white axis edge */
+  --qd-chart-axis-y: #8a8d92;
+  --qd-chart-up: #0fa968;
+  --qd-chart-down: #d9303a;
+  --qd-mtm-up: var(--qd-chart-up);
+  --qd-mtm-down: var(--qd-chart-down);
+  --qd-chart-oi-rise: #4fb37a;
+  --qd-chart-oi-fall: #e07a7a;
+  --qd-chart-opening-band: rgb(0 0 0 / 4%);
+  --qd-chart-opening-rule: rgb(0 0 0 / 9%);
+  --qd-chart-opening-zero: rgb(168 112 18 / 85%);
+  --qd-chart-opening-wash: rgb(0 0 0 / 5%);
+  --qd-chart-up-rgb: 15 169 104;
+  --qd-chart-down-rgb: 217 48 58;
+  /* On white the chart green is 3.05:1 (2.62 on its chip): text goes darker. */
+  --qd-home-up-text: #08744a; /* 5.82 ground · 5.01 chip */
+  --qd-home-down-text: #b8242d; /* 6.31 ground · 5.12 chip */
+  --qd-candle-filled-up: var(--qd-chart-up);
+  --qd-candle-filled-down: var(--qd-chart-down);
+  --qd-chart-label-minor: #69717c;
+  --qd-chart-crosshair: #8f98a3;
+  --qd-chart-grid-major: #c6cdd5;
+  --qd-chart-zero: #737b86;
+  --qd-chart-edge: #bcc3cc;
+  --qd-chart-bg-top: var(--qd-chart-bg);
+  --qd-chart-bg-bottom: var(--qd-chart-bg);
+  --qd-chart-grain: 0;
+  --qd-chart-legend-border: rgb(16 24 40 / 8%);
+  --qd-chart-legend-bg: rgb(223 227 232 / 92%);
+  --qd-chart-ink-dark: #111114;
+  --qd-chart-ink-light: var(--qd-primary-text);
+  --qd-badge-on-error: #f4f6f9; /* on Mist's deep error red, 5.2:1 */
+  /* One tier up from muted: on the grey nav the names read as faded beside their values. */
+  --qd-feed-symbol: var(--qd-text-secondary);
+  /* OI Analyzer in light: calls GREEN, puts RED (2026-10-09, on request). Fills
+     in a muted green and red with the solid end at 46%, so the OI figure on a
+     bar still reads at ~7.5:1 or better; text, tips, headings and wall tags in
+     the deep green and red the desk's P&L uses (5.9:1 on the card). (In the
+     deep colours at 72% a bar's end went near-black and buried its figure.) */
+  --qd-oi-bar-call-rgb: 52 160 98;
+  --qd-oi-bar-put-rgb: 212 84 72;
+  --qd-oi-call-ink-rgb: 12 97 54;
+  --qd-oi-put-ink-rgb: 154 45 28;
+  --qd-oi-bar-faint: 10%;
+  --qd-oi-bar-solid: 46%;
+  --qd-chart-up-soft: #3f8361;
+  --qd-chart-down-soft: #b1434c;
+  --qd-chart-tag-bg: var(--qd-text-strong);
+  --qd-chart-tag-text: var(--qd-chart-bg);
+  --qd-chart-oi-call: #a8d0ae;
+  --qd-chart-oi-put: #e3a5a8;
+  --qd-chart-oi-call-add: #3f9452;
+  --qd-chart-oi-put-add: #c4474f;
+  --qd-payoff-target: #26539a;
+
+  /* Categorical series ramp — the straddle lab draws up to 8 lines at once, and
+     none of the colours above can serve: call/put, P&L and OI buildup all MEAN
+     something, so a straddle line wearing one would read as a side or a result.
+
+     Built in OKLCH and validated, not eyeballed: one fixed hue order
+     (254, 70, 196, 340, 95, 310, 55, 225) shared by both themes so a series keeps
+     its identity when the theme flips, with only the lightness re-picked per mode.
+     Green (~130-165) and red (~25-40) are deliberately absent — those are this
+     app's up/down colours.
+
+     Both ramps pass all five checks: lightness band, chroma floor, CVD adjacent
+     separation, normal-vision floor and >= 3:1 contrast against the chart surface.
+     Assigned in fixed order and never cycled — a 9th series is not a colour. */
+  --qd-series-1: #3e7cc5;
+  --qd-series-2: #7d4b00;
+  --qd-series-3: #14a0a1;
+  --qd-series-4: #984780;
+  --qd-series-5: #8a7304;
+  --qd-series-6: #744593;
+  --qd-series-7: #c16e2d;
+  --qd-series-8: #008eb3;
+  /* Decay tracker case colours (bRODHa's twelve): none reads as a pin, the call,
+     the put or the underlying's line. */
+  --qd-decay-1: #7c3aed;
+  --qd-decay-2: #db2777;
+  --qd-decay-3: #0d9488;
+  --qd-decay-4: #65a30d;
+  --qd-decay-5: #c026d3;
+  --qd-decay-6: #4f46e5;
+  --qd-decay-7: #a16207;
+  --qd-decay-8: #64748b;
+  --qd-decay-9: #c2410c;
+  --qd-decay-10: #be185d;
+  --qd-decay-11: #0f766e;
+  --qd-decay-12: #6d28d9;
+
+  --qd-toggle-on-bg: #cfd5dc;
+  --qd-toggle-on-border: #a3abb6;
+
+  --qd-scrollbar-thumb: #a3abb6;
+  --qd-scrollbar-thumb-hover: #8f98a3;
+  --qd-scrollbar-thumb-active: #737b86;
+
+  --qd-buy: #0c6136;
+  --qd-sell: #9a2d1c;
+
+  --qd-live: #15191e;
+  --qd-value: #262c33;
+  --qd-edit-border: #afb7c1;
+  --qd-required: #c9822b;
+  --qd-focus: #26539a;
+  --qd-derived: #8a6fc2;
+  --qd-inactive: #aeaeb2;
+  --qd-group-title: #4b535d;
+
+  --qd-nav-text: #262c33;
+  --qd-nav-container-bg: #d4dae1;
+  --qd-nav-container-border: #b5bcc6;
+  /* A shade under the nav, not black: a black strip on a light page reads as a hole. */
+  --qd-ticker-bg: color-mix(in srgb, var(--qd-nav-container-bg), #000 5%);
+  --qd-nav-icon: #4b535d;
+  --qd-nav-hover-bg: #cad0d8;
+  --qd-nav-hover-text: #15191e;
+  --qd-nav-selected-bg: #c4d1e4;
+  --qd-nav-selected-text: #15191e;
+  --qd-nav-selected-border: #9fb5d8;
+  --qd-nav-divider: #bcc3cc;
+
+  --qd-tab-text: #4b535d;
+  --qd-tab-hover-bg: #d6dde5; /* a step lighter than the #d0d8e2 strip */
+  --qd-tab-hover-border: rgb(16 24 40 / 22%);
+  --qd-tab-hover-text: #15191e;
+  --qd-tab-active-bg: #dfe3e8;
+  --qd-tab-inactive-bg: var(--qd-container-surface); /* an unselected card\'s visible tab still opens into its body */
+  --qd-tab-active-border: #bcc3cc;
+  --qd-tab-active-text: #15191e;
+
+  /* A grey platter with a dark pill and an off-white label: 12.2:1. */
+  --qd-seg-track: #c9d0d8;
+  --qd-seg-pill: #2b3139;
+  --qd-seg-text: #262c33;
+  --qd-seg-hover-text: #15191e;
+  --qd-seg-active-text: #f5f7fa;
+
+  --qd-input-bg: #e7eaee;
+  --qd-input-border: var(--qd-edit-border);
+  --qd-input-text: #15191e;
+  --qd-input-placeholder: #737b86;
+  --qd-input-focus-bg: #e7eaee;
+  --qd-input-border-hover: #7d8590;
+  --qd-form-label: #4b535d;
+  /* Ink on paper: the darkest text as the fill, the tick in the off-white a
+     filled control's text uses (nothing pure white). */
+  --qd-check-fill: var(--qd-text-strong);
+  --qd-check-mark: var(--qd-primary-text);
+
+  --qd-primary-bg: #26539a;
+  --qd-primary-hover: #2f5ea6;
+  --qd-primary-pressed: #214a8a;
+  --qd-primary-text: #f4f6f9;
+  --qd-primary-disabled-bg: #ccd2d9;
+  --qd-primary-disabled-text: #8a919a;
+  --qd-secondary-bg: #e5e8ec;
+  --qd-secondary-border: #afb7c1;
+  --qd-secondary-hover-bg: #d5dae0;
+  --qd-secondary-hover-border: #8f98a3;
+  --qd-secondary-text: #15191e;
+
+  --qd-row-black: #dfe3e8;
+  --qd-row-grey: #d8dde3;
+  --qd-row-hover: #d0d9e5;
+  --qd-row-selected: #c6d3e7;
+  --qd-row-active: #d5dae0;
+  --qd-row-live-text: #15191e;
+  --qd-table-header-top: var(--qd-surface-2);
+  --qd-table-header-bottom: var(--qd-surface-3);
+  --qd-table-header-text: #3c434c;
+  --qd-table-details-bg: #d5dae0;
+  /* Darkens a light row on hover — a white wash would do nothing on a white row. */
+  --qd-row-hover-wash: #000000;
+
+  /* Paler than --qd-row-selected (#e0f0f7), for the same reason as the dark
+     value above — the original #cbe8f2 was more saturated than the selected
+     row's own wash. */
+  --qd-row-atm: #d1dbe8;
+  --qd-row-itm: rgb(214 160 40 / 14%);
+
+  --qd-popup-bg: #e5e8ec;
+  --qd-popup-border: #bcc3cc;
+  --qd-popup-hover: #d5dae0;
+  --qd-popup-selected: #c9d5e8;
+  --qd-menu-bg: color-mix(in srgb, var(--qd-popup-bg) 82%, transparent);
+  --qd-menu-blur: blur(24px) saturate(180%);
+  --qd-menu-hover: color-mix(in srgb, var(--qd-text-strong) 9%, transparent);
+  --qd-menu-sep: color-mix(in srgb, var(--qd-text-strong) 12%, transparent);
+  --qd-menu-shadow: 0 0 0 1px rgb(0 0 0 / 14%), inset 0 0 0 1px rgb(255 255 255 / 55%), 0 14px 40px rgb(0 0 0 / 18%), 0 3px 10px rgb(0 0 0 / 10%);
+  --qd-card-bg: #e5e8ec;
+  --qd-card-border: rgb(16 24 40 / 10%);
+  --qd-group-divider: #c6cdd5;
+}
+
+/*
+ * dockview's own variables, pointed at the tokens above.
+ *
+ * DEXT is a dockview app — the class names in its stylesheet (.dv-content-container,
+ * .dv-active-tab) are dockview's. Overriding these is how the dock gets DEXT's tab
+ * behaviour without restyling every internal element by hand.
+ *
+ * A popped-out window's container (`.dv-popout-window`) takes them too: it carries the theme
+ * class but not `.qd-dock`.
+ *
+ * Scoped to both classes on purpose: dockview declares these on
+ * `.dockview-theme-dark`, which matches `:root` for specificity and would then be
+ * decided by import order alone. Two classes settles it outright.
+ */
+:is(.qd-dock, .dv-popout-window).dockview-theme-dark {
+  --dv-background-color: var(--qd-bg-workspace);
+  --dv-paneview-active-outline-color: var(--qd-dock-accent);
+  /* Where a dragged tab or header will land: the accent, not dockview's grey and white. */
+  --dv-drag-over-background-color: rgb(var(--qd-dock-accent-rgb) / 16%);
+  --dv-drag-over-border-color: var(--qd-dock-accent);
+  /* The strip is part of the container, so it takes the container's ground — not
+     `--qd-bg-app`, which is the chrome outside it. */
+  /* On the canvas colour, not the panel's — Kite's own tab bar is transparent,
+     so only the active tab (below) reads as filled; everything else blends into
+     the same gap colour the inter-panel splitters use. */
+  --dv-tabs-and-actions-container-background-color: var(--qd-bg-workspace);
+  --dv-tabs-and-actions-container-height: var(--qd-dock-tab-h); /* matches dock.css */
+  --dv-activegroup-visiblepanel-tab-background-color: var(--qd-tab-active-bg);
+  --dv-activegroup-visiblepanel-tab-color: var(--qd-tab-active-text);
+  --dv-activegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-activegroup-hiddenpanel-tab-color: var(--qd-tab-text);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--qd-tab-inactive-bg);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--qd-tab-text);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--qd-tab-text); /* was chrome-muted, 4.12:1 in dark */
+  --dv-tab-divider-color: transparent;
+  /* No hairline between containers. Dockview draws this on the leading edge of
+     every view but the first (`.dv-view:not(:first-child)::before`), so it
+     lands INSIDE the gutter — a third line between two containers that each
+     already carry their own border, and in light mode a line between cards
+     that are meant to be told apart by shadow alone. The gap itself is the
+     separator here; the splitter that lives in it is `.dv-sash`, which is
+     transparent until hovered or dragged (dock.css). */
+  --dv-separator-border: transparent;
+  --dv-group-view-background-color: transparent;
+  --dv-drag-over-background-color: rgb(var(--qd-dock-accent-rgb) / 14%);
+  --dv-drag-over-border-color: var(--qd-dock-accent);
+  --dv-active-sash-color: var(--qd-dock-accent);
+  --dv-icon-hover-background-color: var(--qd-nav-hover-bg);
+}
+
+/*
+ * ============================================================
+ * CANVAS THEMES — the terminal's own data ground
+ * ============================================================
+ *
+ * The terminal panel sits its content on a canvas inset 2px inside the
+ * container, and `data-canvas` on that element picks the canvas's tone. The
+ * container colour (--qd-bg-panel) shows through the inset as a thin dark gap,
+ * so the canvas reads as a lifted surface rather than a painted border.
+ *
+ * Why a set of six rather than one value: a canvas one step up the neutral
+ * ladder (#222222 on #181818) is a 3.9% step over 2px, which is below what the
+ * eye resolves on a near-black screen. Each theme below moves at least three
+ * times that AND carries a hue, so the canvas reads as chosen rather than as a
+ * slightly-wrong grey. `neutral` keeps the original flat look for anyone who
+ * wants it back.
+ *
+ * Every theme moves its whole ladder together — canvas, zebra, the enabled-row
+ * tone, the header gradient and the detail well — because a tinted canvas under
+ * neutral-grey rows just looks like a mistake in one of them.
+ *
+ * Saturation stays very low on purpose. Call blue, put orange, gain green and
+ * the accent all carry MEANING on this screen; a ground that competes with any
+ * of them costs more than it gains.
+ */
+
+[data-canvas="neutral"] {
+  --qd-canvas: #181818;
+  --qd-canvas-row: #181818;
+  --qd-canvas-row-alt: #202020;
+  --qd-canvas-header-top: #222222;
+  --qd-canvas-header-bottom: #2b2b2b;
+  --qd-canvas-detail: #131415;
+  --qd-canvas-hover: rgb(255 255 255 / 7%);
+  --qd-canvas-active-edge: #5b9a5d;
+  --qd-canvas-grid: rgb(255 255 255 / 7%);
+}
+
+/* Cool blue-grey. The tone most trading terminals settle on. */
+[data-canvas="slate"] {
+  --qd-canvas: #1b1f26;
+  --qd-canvas-row: #1b1f26;
+  --qd-canvas-row-alt: #212630;
+  --qd-canvas-header-top: #262c36;
+  --qd-canvas-header-bottom: #2e353f;
+  --qd-canvas-detail: #161a20;
+  --qd-canvas-hover: rgb(120 170 255 / 11%);
+  --qd-canvas-active-edge: #5b8fd6;
+  --qd-canvas-grid: rgb(255 255 255 / 7%);
+}
+
+/* Warm charcoal — a trace of brown, not sepia. */
+[data-canvas="graphite"] {
+  --qd-canvas: #201d1a;
+  --qd-canvas-row: #201d1a;
+  --qd-canvas-row-alt: #282523;
+  --qd-canvas-header-top: #2c2825;
+  --qd-canvas-header-bottom: #34302c;
+  --qd-canvas-detail: #1a1815;
+  --qd-canvas-hover: rgb(255 198 140 / 9%);
+  --qd-canvas-active-edge: #b98c52;
+  --qd-canvas-grid: rgb(255 255 255 / 7%);
+}
+
+/* Deep navy — the clearest departure from grey. */
+[data-canvas="ink"] {
+  --qd-canvas: #171c28;
+  --qd-canvas-row: #171c28;
+  --qd-canvas-row-alt: #1e2436;
+  --qd-canvas-header-top: #232a3a;
+  --qd-canvas-header-bottom: #2b3344;
+  --qd-canvas-detail: #131722;
+  --qd-canvas-hover: rgb(120 165 255 / 13%);
+  --qd-canvas-active-edge: #5f8fe0;
+  --qd-canvas-grid: rgb(255 255 255 / 7%);
+}
+
+/* Green-grey at very low saturation. */
+[data-canvas="moss"] {
+  --qd-canvas: #1b201c;
+  --qd-canvas-row: #1b201c;
+  --qd-canvas-row-alt: #222922;
+  --qd-canvas-header-top: #262d27;
+  --qd-canvas-header-bottom: #2e352f;
+  --qd-canvas-detail: #161a17;
+  --qd-canvas-hover: rgb(150 230 170 / 10%);
+  --qd-canvas-active-edge: #5b9a5d;
+  --qd-canvas-grid: rgb(255 255 255 / 7%);
+}
+
+/* Violet-charcoal — the one hue with no existing job in this palette. */
+[data-canvas="plum"] {
+  --qd-canvas: #1f1b23;
+  --qd-canvas-row: #1f1b23;
+  --qd-canvas-row-alt: #27222d;
+  --qd-canvas-header-top: #2b2631;
+  --qd-canvas-header-bottom: #332e3a;
+  --qd-canvas-detail: #19161d;
+  --qd-canvas-hover: rgb(205 165 255 / 11%);
+  --qd-canvas-active-edge: #9b7fd4;
+  --qd-canvas-grid: rgb(255 255 255 / 7%);
+}
+
+/*
+ * Grey ground, graphite-black tables — the one theme where the pane and the
+ * grid are deliberately DIFFERENT surfaces rather than two steps of one.
+ *
+ * Modelled on the Stoxxo bridge: a grey body with the data sitting on near-black
+ * inside it, and a grey header band across the top of the grid. The black is
+ * lifted and warm (#1f1d1b, not #000) so the rows read as a material rather than
+ * as a hole; the zebra and the enabled row sit just above it.
+ *
+ * This is the layout `--qd-canvas` and `--qd-canvas-row` were split apart for.
+ * Every other theme holds the same value in both.
+ */
+[data-canvas="steel"] {
+  /* The desk's #737373, taken a step darker on request. Note it is still a
+     MIDDLE grey: nothing reads
+     on it — light text tops out at 3.9:1 and dark text at 3.9:1, both under the
+     4.5:1 floor. That is fine because nothing sits on it: the grid, its header
+     and the footer all paint their own surface, and this shows only as the
+     ground around and below them. Anything new that would put TEXT here needs
+     its own surface, the way the empty tabs do (see TerminalPanel). */
+  --qd-canvas: #5e5e5e;
+
+  /*
+   * The grid itself, sampled from the desk's own Stoxxo screenshot rather than
+   * matched by eye — #262626 for the rows and #444444 for the header band are
+   * that app's exact values. It is also precisely the "graphite black, not deep
+   * black, a bit lighter" the desk described before pointing at it: #262626 is
+   * neutral and sits 14 levels above the container's near-black.
+   */
+  --qd-canvas-row: #262626;
+  --qd-canvas-row-alt: #2e2e2e;
+
+  /* FLAT, not a gradient: Stoxxo's header band is one tone across, and the two
+     stops are set to the same value so the shared gradient renders it that way
+     without the table needing a second code path. */
+  --qd-canvas-header-top: #444444;
+  --qd-canvas-header-bottom: #444444;
+
+  --qd-canvas-detail: #1e1e1e;
+  --qd-canvas-hover: rgb(130 175 255 / 12%);
+  --qd-canvas-active-edge: #5b8fd6;
+  --qd-canvas-grid: rgb(255 255 255 / 7%);
+}
+
+/*
+ * The same seven in light. Each is the dark theme's hue held at the top of the
+ * scale instead of the bottom, so switching the app's theme keeps the canvas
+ * recognisably the same choice rather than resetting it to white.
+ *
+ * `:root[data-theme="light"] [data-canvas=…]` outranks the bare
+ * `[data-canvas=…]` above on specificity, so order in this file is not what
+ * decides it.
+ */
+:root[data-theme="light"] [data-canvas="neutral"] {
+  /* Mist's container face, not pure white (2026-10-09). */
+  --qd-canvas: #dfe3e8;
+  --qd-canvas-row: #dfe3e8;
+  --qd-canvas-row-alt: #d8dde3;
+  --qd-canvas-header-top: #d5dae0;
+  --qd-canvas-header-bottom: #ccd2d9;
+  --qd-canvas-detail: #d5dae0;
+  --qd-canvas-hover: rgb(16 24 40 / 5%);
+  --qd-canvas-active-edge: #278a4f;
+  --qd-canvas-grid: rgb(0 0 0 / 8%);
+}
+
+:root[data-theme="light"] [data-canvas="slate"] {
+  --qd-canvas: #dddee1;
+  --qd-canvas-row: #dddee1;
+  --qd-canvas-row-alt: #d5d9de;
+  --qd-canvas-header-top: #d2d5dd;
+  --qd-canvas-header-bottom: #c6cdd6;
+  --qd-canvas-detail: #d5d9dd;
+  --qd-canvas-hover: rgb(40 110 210 / 9%);
+  --qd-canvas-active-edge: #3f7fc4;
+  --qd-canvas-grid: rgb(0 0 0 / 8%);
+}
+
+:root[data-theme="light"] [data-canvas="graphite"] {
+  --qd-canvas: #e0dedc;
+  --qd-canvas-row: #e0dedc;
+  --qd-canvas-row-alt: #dbd8d3;
+  --qd-canvas-header-top: #d6d2cc;
+  --qd-canvas-header-bottom: #cdc7bf;
+  --qd-canvas-detail: #dbd8d3;
+  --qd-canvas-hover: rgb(170 110 40 / 9%);
+  --qd-canvas-active-edge: #a8763a;
+  --qd-canvas-grid: rgb(0 0 0 / 8%);
+}
+
+:root[data-theme="light"] [data-canvas="ink"] {
+  --qd-canvas: #dbdde2;
+  --qd-canvas-row: #dbdde2;
+  --qd-canvas-row-alt: #d2d7e0;
+  --qd-canvas-header-top: #cbd2de;
+  --qd-canvas-header-bottom: #bdc9d9;
+  --qd-canvas-detail: #d2d7e0;
+  --qd-canvas-hover: rgb(30 100 210 / 10%);
+  --qd-canvas-active-edge: #3f7fc4;
+  --qd-canvas-grid: rgb(0 0 0 / 8%);
+}
+
+:root[data-theme="light"] [data-canvas="moss"] {
+  --qd-canvas: #dcdedc;
+  --qd-canvas-row: #dcdedc;
+  --qd-canvas-row-alt: #d4d9d4;
+  --qd-canvas-header-top: #d1d5d1;
+  --qd-canvas-header-bottom: #c5cdc5;
+  --qd-canvas-detail: #d4d9d4;
+  --qd-canvas-hover: rgb(60 150 90 / 9%);
+  --qd-canvas-active-edge: #3f9d6e;
+  --qd-canvas-grid: rgb(0 0 0 / 8%);
+}
+
+:root[data-theme="light"] [data-canvas="steel"] {
+  /* The same grey, which needs no inverting — it frames a white grid in light
+     exactly as it frames a black one in dark. Only the grid moves. */
+  --qd-canvas: #5e5e5e;
+  --qd-canvas-row: #dfe3e8;
+  --qd-canvas-row-alt: #d8dde3;
+  /* Flat, matching the dark cut's band rather than a gradient. */
+  --qd-canvas-header-top: #b4bbc2;
+  --qd-canvas-header-bottom: #b4bbc2;
+  --qd-canvas-detail: #e6e9ec;
+  --qd-canvas-hover: rgb(40 110 210 / 10%);
+  --qd-canvas-active-edge: #3f7fc4;
+  --qd-canvas-grid: rgb(0 0 0 / 8%);
+}
+
+:root[data-theme="light"] [data-canvas="plum"] {
+  --qd-canvas: #dfdde1;
+  --qd-canvas-row: #dfdde1;
+  --qd-canvas-row-alt: #d9d3dc;
+  --qd-canvas-header-top: #d3cdd7;
+  --qd-canvas-header-bottom: #c9bfd1;
+  --qd-canvas-detail: #d9d3dc;
+  --qd-canvas-hover: rgb(130 80 190 / 9%);
+  --qd-canvas-active-edge: #7d5bb8;
+  --qd-canvas-grid: rgb(0 0 0 / 8%);
+}
+
+/*
+ * ============================================================
+ * FOLDER LOOK — `data-look="folder"` on <html> (theme/mode.tsx), 2026-10-08
+ * ============================================================
+ *
+ * Chosen by the user from a mockup ("F1 · classic folder", Dusk palette): each
+ * container is a folder. Its tab and its header strip are ONE lighter band, and
+ * the data sits in a darker body cut 3px inside that band (dock.css draws the
+ * shape). The standard look above is untouched and stays the default.
+ *
+ * Dusk is a faint cool blue-grey, built for long sessions and measured, not
+ * eyeballed (contrast on the #1b1d20 body): values 12.3:1, text 8.9:1, labels
+ * 5.5:1, the faintest text 4.5:1 — softer than the standard look's 14.5:1 top.
+ * Call, put, gain and loss sit at one lightness (L* 62–66) at low saturation, so
+ * no data colour out-shouts another; only their meaning tells them apart.
+ */
+:root[data-look="folder"]:not([data-theme="light"]) {
+  /* The folder itself: band (tab + header) over a darker body. A resting
+     container's band sits a step under the selected one's. */
+  --qd-folder-band: #2c3036;
+  --qd-folder-rest: #282b30;
+  --qd-folder-body: #1b1d20;
+  --qd-folder-cut: 3px;
+
+  /* Grounds */
+  /* A deep Dusk canvas (2026-10-08, on request: "make my containers look
+     uplifted"). At #232629 a resting band sat only 2.5 L* above it and the
+     folders melted into the ground; #141619 puts every band 10.3 L* up (the
+     selected one 12.5) while the body inside stays 3.5 L* above the canvas, so
+     it reads as a dark inside, never as a hole through to the ground. */
+  --qd-bg-app: #141619;
+  --qd-bg-workspace: #141619;
+  /* The folder's bevel: a lit top edge on the tab, a shaded bottom edge on the
+     band. Zero blur, so it stays crisp at 4K. */
+  --qd-folder-lip: rgb(255 255 255 / 6%);
+  /* The hairline between a header strip and the body under it (dock.css):
+     faint white, so it reads as an edge catching light rather than a drawn
+     rule. Shared by every dark folder background. */
+  --qd-strip-rule: rgb(255 255 255 / 11%);
+  /* An outline drawn ON the band (a header's pickers and ghost buttons): light
+     enough to read against every tone's band, the selected one included. */
+  --qd-band-edge: rgb(255 255 255 / 16%);
+  --qd-folder-shade: rgb(0 0 0 / 45%);
+  --qd-bg-panel: #1b1d20;
+  --qd-container-surface: #1b1d20;
+  --qd-container-glow: #1b1d20;
+  --qd-container-glow-centre: #1b1d20;
+  --qd-container-glow-edge: #1b1d20;
+  --qd-container-border: #2e3237;
+  /* The band's edge into the body marks where a header ends; no rule needed. */
+  --qd-container-header-divider: transparent;
+  --qd-strip-edge: var(--qd-container-border);
+  --qd-header-rule: var(--qd-container-header-divider);
+  --qd-strip-cast: none;
+  --qd-dock-accent: #8fa8cc;
+  --qd-dock-accent-rgb: 143 168 204;
+  --qd-surface-0: #16181b;
+  --qd-surface-1: #1b1d20;
+  --qd-surface-2: #23262a;
+  --qd-surface-3: #2b2f34;
+  --qd-well-bg: #212428;
+  --qd-well-edge: #2e3237;
+  --qd-pnl-well: #141619;
+  --qd-card-bg: #1f2124;
+  --qd-card-border: rgb(255 255 255 / 8%);
+  --qd-group-divider: #2e3237;
+
+  /* Text ladder, tinted the way the grounds are. Raised one tier on
+     2026-10-08 ("you are also fading the colours inside the containers"): the
+     first cut put labels at 4.3:1 and the faintest tier at 3.5:1 on the band,
+     under the 4.5:1 floor. Now, body / band: values 14.5 / 11.4, text
+     11.6 / 9.1, labels 8.2 / 6.4, faintest 5.9 / 4.6. */
+  --qd-text-strong: #eceef1;
+  --qd-text-primary: #d3d6db;
+  --qd-text-secondary: #b0b5bc;
+  --qd-text-tertiary: #9399a1;
+  --qd-text-muted: #9399a1;
+  --qd-text-disabled: #6a6f76;
+  --qd-chrome-primary: #d3d6db;
+  --qd-chrome-secondary: #b0b5bc;
+  --qd-chrome-muted: #9399a1;
+  --qd-live: #eceef1;
+  --qd-value: #d3d6db;
+  --qd-group-title: #b0b5bc;
+  --qd-form-label: #b0b5bc;
+  --qd-table-header-text: #d3d6db;
+
+  /* Accent: a clear Dusk blue, 6.9:1 on the body — the first steel #8fa8cc
+     read grey beside the data and lost "this is live / selected". */
+  --qd-accent: #6fa8f5;
+  --qd-accent-rgb: 111 168 245;
+  --qd-focus: #6fa8f5;
+
+  /* Data colours: the Position Tracker's richer set, used everywhere now —
+     the first equal-lightness pastels read as faded inside every container. */
+  --qd-call: #45b37a;
+  --qd-put: #ec6a63;
+  --qd-call-rgb: 69 179 122;
+  --qd-put-rgb: 236 106 99;
+  --qd-positive: #3fbf7f;
+  --qd-negative: #f0605a;
+  --qd-positive-rgb: 63 191 127;
+  --qd-negative-rgb: 240 96 90;
+  --qd-buy: #3fbf7f;
+  --qd-sell: #f0605a;
+  --qd-buy-rgb: 63 191 127;
+  --qd-sell-rgb: 240 96 90;
+  --qd-error-text: #f0605a;
+
+  /* Tabs: the active tab is the band itself, so it runs into its header */
+  --qd-tab-text: #a3a8af;
+  --qd-tab-hover-bg: #262a2f;
+  --qd-tab-hover-text: #d3d6db;
+  --qd-tab-active-bg: var(--qd-folder-band);
+  --qd-tab-inactive-bg: var(--qd-folder-rest);
+  --qd-tab-active-border: transparent;
+  --qd-tab-active-text: #d9dce0;
+
+  /* Nav bar */
+  --qd-nav-text: #b0b5bc;
+  --qd-nav-container-bg: #1b1d20;
+  --qd-nav-container-border: #2e3237;
+  --qd-nav-icon: #9399a1;
+  --qd-nav-hover-bg: #262a2f;
+  --qd-nav-hover-text: #eceef1;
+  --qd-nav-selected-bg: #2b2f35;
+  --qd-nav-selected-border: #454a51;
+  --qd-nav-divider: #33373d;
+
+  /* Rows */
+  --qd-row-black: #1b1d20;
+  --qd-row-grey: #1f2124;
+  --qd-row-hover: #272a2e;
+  --qd-row-active: #202326;
+  --qd-row-selected: #22303f;
+  --qd-row-atm: #1f2a38;
+  --qd-table-details-bg: #16181b;
+
+  /* Popups, tips, fields, buttons */
+  --qd-popup-bg: #23262a;
+  --qd-popup-border: #363a40;
+  --qd-popup-hover: #2b2f34;
+  --qd-popup-selected: #31353b;
+  --qd-tip-bg: #2b2f34;
+  --qd-tip-border: #3a3e44;
+  --qd-input-bg: #16181b;
+  --qd-input-focus-bg: #1b1d20;
+  --qd-input-text: #dde0e4;
+  --qd-input-placeholder: #868b92;
+  --qd-input-border-hover: #686d74;
+  --qd-edit-border: #454a51;
+  --qd-secondary-bg: #23262a;
+  --qd-secondary-border: #363a40;
+  --qd-secondary-hover-bg: #2b2f34;
+  --qd-secondary-hover-border: #545960;
+  --qd-secondary-text: #d3d6db;
+  --qd-toggle-on-bg: #2b2f34;
+  --qd-toggle-on-border: #454a51;
+  --qd-seg-pill: #555a62;
+  --qd-seg-text: #b0b5bc;
+  --qd-seg-hover-text: #eceef1;
+
+  /* Charts: grids and chrome follow the tint; candles and OI keep the chart's own colours */
+  --qd-chart-grid: #25282c;
+  --qd-chart-grid-major: #2c3035;
+  --qd-chart-edge: #2e3237;
+  --qd-chart-label-minor: #80868e; /* was #737880, 3.8:1 on the body; now 4.6:1 */
+  --qd-chart-crosshair: #4f545b;
+  --qd-chart-legend-bg: rgb(20 22 25 / 90%);
+
+  --qd-scrollbar-thumb: #3a3e44;
+  --qd-scrollbar-thumb-hover: #565b62;
+  --qd-scrollbar-thumb-active: #6c7178;
+
+  /* Chrome the folder look used to inherit from the standard dark one — neutral
+     #2a2a2a greys and Apple's #0066cc — which sat off-tint beside Dusk's
+     blue-greys (2026-10-09, on request: "add my Dusk colouring to the other
+     components"). Each points at a tone token where one fits, so Charcoal, Ink
+     and Espresso carry them in their own tint with no copy of their own. */
+  --qd-primary-bg: #3a6fb8; /* Dusk blue; white text 4.7:1 */
+  --qd-primary-hover: #4377c4;
+  --qd-primary-pressed: #33629f;
+  --qd-primary-text: #f5f7fa;
+  --qd-primary-disabled-bg: var(--qd-surface-3);
+  --qd-primary-disabled-text: var(--qd-text-disabled);
+  --qd-nav-selected-text: var(--qd-text-strong);
+  --qd-seg-active-text: var(--qd-text-strong);
+  --qd-seg-track: rgb(var(--qd-dock-accent-rgb) / 12%);
+  --qd-inactive: var(--qd-text-disabled);
+  --qd-status-disconnected: var(--qd-text-disabled);
+  --qd-chart-axis: var(--qd-text-primary);
+  --qd-chart-axis-y: var(--qd-text-tertiary);
+  --qd-chart-zero: #5d636b;
+  --qd-chart-ink-dark: var(--qd-bg-app);
+  --qd-home-up-text: var(--qd-positive);
+  --qd-home-down-text: var(--qd-negative);
+  --qd-bee-button: var(--qd-surface-3);
+  --qd-bee-button-edge: var(--qd-popup-border);
+  --qd-bee-bubble: var(--qd-popup-bg);
+  --qd-bee-bubble-you: var(--qd-popup-selected);
+
+  /* Position Tracker's instrument chips: a steel blue-grey from the Dusk
+     accent instead of the standard look's indigo, which glared on this body. */
+  --qd-script-chip-bg: #2d3642;
+  --qd-script-chip-border: #3f4a58;
+  --qd-script-chip-hover: #35404d;
+  --qd-script-chip-text: #dde2e8;
+  --qd-script-chip-muted: #a7b1bd;
+  --qd-script-chip-initial: #c3d3ea;
+  --qd-script-exchange-bg: #232a33;
+  --qd-script-exchange-border: #52606f;
+  --qd-script-exchange-text: #c9d2de;
+}
+
+/* Light keeps its own palette; only the folder's three tones are needed. */
+:root[data-look="folder"][data-theme="light"] {
+  /* Mist folders, lifted (2026-10-09, on request: the chart containers were
+     "getting submerged"). Sampled off the desk, the band was #d3d9df on a
+     #c9d0d8 canvas, 3.5 L* apart, and the tab strip WAS the canvas, so a folder
+     sank into the page. Now the canvas sits deeper (#bfc7d0, L* 80) under a
+     resting band at L* 86 and the selected one at L* 89, with a firmer rim:
+     every folder is a plate 6-9 L* off the page, and the body inside is
+     unchanged. Tab labels, which sit on the canvas, go one tier darker to keep
+     5.3:1 on it. */
+  --qd-bg-app: #b8c1cb;
+  --qd-bg-workspace: #b8c1cb;
+  --qd-folder-band: #d2d9e1;
+  --qd-folder-rest: #cbd3dc;
+  --qd-folder-body: #dfe3e8;
+  --qd-folder-rim: rgb(16 24 40 / 18%);
+  --qd-folder-shade: rgb(16 24 40 / 22%);
+  --qd-tab-text: #424a54;
+  --qd-folder-cut: 3px;
+  --qd-strip-rule: rgb(0 0 0 / 10%);
+  --qd-container-header-divider: transparent;
+  --qd-strip-edge: var(--qd-container-border);
+  --qd-header-rule: var(--qd-container-header-divider);
+  --qd-strip-cast: none;
+  --qd-tab-active-bg: var(--qd-folder-band);
+  --qd-tab-inactive-bg: var(--qd-folder-rest);
+}
+
+/*
+ * Position Tracker in the folder look — deeper colours (2026-10-08, on request:
+ * "looking very faint"). Dusk's soft ladder suits charts and long reads; the
+ * tracker is a book you glance at for money, so inside it the text climbs one
+ * tier, gain/loss and buy/sell take richer greens and reds, the P&L column's
+ * well sinks deeper, and the instrument chips go a deeper navy.
+ */
+:root[data-look="folder"]:not([data-theme="light"]) [data-tracker] {
+  /* Text and data colours now come from the folder look itself (raised to
+     this same set app-wide), and the P&L well from the chosen background. */
+  --qd-account-divider: rgb(255 255 255 / 22%);
+
+  --qd-script-chip-bg: #213452;
+  --qd-script-chip-border: #30507e;
+  --qd-script-chip-hover: #29406a;
+  --qd-script-chip-text: #eef3fa;
+  --qd-script-chip-muted: #b3c6e2;
+  --qd-script-chip-initial: #cfe0fb;
+  --qd-script-exchange-bg: #172438;
+  --qd-script-exchange-border: #4a6c9e;
+  --qd-script-exchange-text: #d6e3f5;
+}
+
+/*
+ * ============================================================
+ * FOLDER BACKGROUNDS — `data-folder-tone` on <html> (theme/mode.tsx), 2026-10-08
+ * ============================================================
+ *
+ * The user found Dusk's canvas too close to the containers' insides ("the
+ * container uplift is not coming") and asked for every option, named. Dusk
+ * (above) stays as it was. These three put the folders on a near-black canvas
+ * with the whole container face lifted ~10 L* above it (Dusk: 3.5), and a lit
+ * hairline rim (--qd-folder-rim, zero blur) round each folder. Text and data
+ * colours are the same as Dusk's; only grounds, rims and the text tint move.
+ * Every text tier is >= 4.5:1 on the band, the faintest included.
+ */
+
+/* Charcoal — Neutral near-black: the folders lift as grey plates. The cleanest, closest to a pro terminal. */
+:root[data-look="folder"][data-folder-tone="charcoal"]:not([data-theme="light"]) {
+  --qd-bg-app: #0b0c0d;
+  --qd-bg-workspace: #0b0c0d;
+  --qd-folder-band: #30343a;
+  --qd-folder-rest: #2a2e33;
+  --qd-folder-body: #202327;
+  --qd-folder-rim: rgb(255 255 255 / 7%);
+  --qd-bg-panel: #202327;
+  --qd-container-surface: #202327;
+  --qd-container-glow: #202327;
+  --qd-container-glow-centre: #202327;
+  --qd-container-glow-edge: #202327;
+  --qd-container-border: #33373d;
+  --qd-surface-0: #191b1e;
+  --qd-surface-1: #202327;
+  --qd-surface-2: #282b30;
+  --qd-surface-3: #30343a;
+  --qd-row-black: #202327;
+  --qd-row-grey: #24272b;
+  --qd-row-hover: #2b2e33;
+  --qd-row-active: #25282c;
+  --qd-pnl-well: #17191b;
+  --qd-table-details-bg: #191b1e;
+  --qd-card-bg: #24272b;
+  --qd-group-divider: #33373d;
+  --qd-well-edge: #33373d;
+  --qd-nav-container-bg: #121315;
+  --qd-nav-container-border: #33373d;
+  --qd-nav-hover-bg: #2a2e33;
+  --qd-nav-selected-bg: #30343a;
+  --qd-tab-hover-bg: #2a2e33;
+  --qd-popup-bg: #26292d;
+  --qd-popup-border: #383c42;
+  --qd-popup-hover: #2f3237;
+  --qd-popup-selected: #35393e;
+  --qd-tip-bg: #2f3237;
+  --qd-tip-border: #383c42;
+  --qd-input-bg: #18191c;
+  --qd-input-focus-bg: #202327;
+  --qd-secondary-bg: #282b30;
+  --qd-secondary-border: #383c42;
+  --qd-secondary-hover-bg: #30343a;
+  --qd-toggle-on-bg: #30343a;
+  --qd-chart-grid: #24272b;
+  --qd-chart-edge: #33373d;
+  --qd-text-strong: #eeeff1;
+  --qd-text-primary: #d6d8db;
+  --qd-text-secondary: #b4b7bc;
+  --qd-text-tertiary: #999ca2;
+  --qd-text-muted: #999ca2;
+  --qd-chrome-primary: #d6d8db;
+  --qd-chrome-secondary: #b4b7bc;
+  --qd-chrome-muted: #999ca2;
+  --qd-live: #eeeff1;
+  --qd-value: #d6d8db;
+  --qd-group-title: #b4b7bc;
+  --qd-form-label: #b4b7bc;
+  --qd-table-header-text: #d6d8db;
+  --qd-nav-text: #b4b7bc;
+  --qd-nav-icon: #999ca2;
+  --qd-seg-text: #b4b7bc;
+  --qd-secondary-text: #d6d8db;
+}
+
+/* Ink — Black with a whisper of Dusk blue: the most premium of the four. */
+:root[data-look="folder"][data-folder-tone="ink"]:not([data-theme="light"]) {
+  --qd-bg-app: #090b0f;
+  --qd-bg-workspace: #090b0f;
+  --qd-folder-band: #2e333b;
+  --qd-folder-rest: #292d34;
+  --qd-folder-body: #1e2228;
+  --qd-folder-rim: rgb(160 190 255 / 9%);
+  --qd-bg-panel: #1e2228;
+  --qd-container-surface: #1e2228;
+  --qd-container-glow: #1e2228;
+  --qd-container-glow-centre: #1e2228;
+  --qd-container-glow-edge: #1e2228;
+  --qd-container-border: #323840;
+  --qd-surface-0: #181b20;
+  --qd-surface-1: #1e2228;
+  --qd-surface-2: #262a31;
+  --qd-surface-3: #2e333b;
+  --qd-row-black: #1e2228;
+  --qd-row-grey: #22262c;
+  --qd-row-hover: #292e35;
+  --qd-row-active: #23272d;
+  --qd-pnl-well: #15181d;
+  --qd-table-details-bg: #181b20;
+  --qd-card-bg: #22262c;
+  --qd-group-divider: #323840;
+  --qd-well-edge: #323840;
+  --qd-nav-container-bg: #101318;
+  --qd-nav-container-border: #323840;
+  --qd-nav-hover-bg: #292d34;
+  --qd-nav-selected-bg: #2e333b;
+  --qd-tab-hover-bg: #292d34;
+  --qd-popup-bg: #252a31;
+  --qd-popup-border: #363c45;
+  --qd-popup-hover: #2d323a;
+  --qd-popup-selected: #333942;
+  --qd-tip-bg: #2d323a;
+  --qd-tip-border: #363c45;
+  --qd-input-bg: #171a1f;
+  --qd-input-focus-bg: #1e2228;
+  --qd-secondary-bg: #262a31;
+  --qd-secondary-border: #363c45;
+  --qd-secondary-hover-bg: #2e333b;
+  --qd-toggle-on-bg: #2e333b;
+  --qd-chart-grid: #22262c;
+  --qd-chart-edge: #323840;
+  --qd-text-strong: #eceef2;
+  --qd-text-primary: #d3d7dd;
+  --qd-text-secondary: #b0b6bf;
+  --qd-text-tertiary: #959ba5;
+  --qd-text-muted: #959ba5;
+  --qd-chrome-primary: #d3d7dd;
+  --qd-chrome-secondary: #b0b6bf;
+  --qd-chrome-muted: #959ba5;
+  --qd-live: #eceef2;
+  --qd-value: #d3d7dd;
+  --qd-group-title: #b0b6bf;
+  --qd-form-label: #b0b6bf;
+  --qd-table-header-text: #d3d7dd;
+  --qd-nav-text: #b0b6bf;
+  --qd-nav-icon: #959ba5;
+  --qd-seg-text: #b0b6bf;
+  --qd-secondary-text: #d3d7dd;
+}
+
+/* Espresso — Soft brown-black: the gentlest at night, warm greys throughout. */
+:root[data-look="folder"][data-folder-tone="espresso"]:not([data-theme="light"]) {
+  --qd-bg-app: #0d0c0b;
+  --qd-bg-workspace: #0d0c0b;
+  --qd-folder-band: #312f2d;
+  --qd-folder-rest: #2b2a28;
+  --qd-folder-body: #21201e;
+  --qd-folder-rim: rgb(255 240 220 / 7%);
+  --qd-bg-panel: #21201e;
+  --qd-container-surface: #21201e;
+  --qd-container-glow: #21201e;
+  --qd-container-glow-centre: #21201e;
+  --qd-container-glow-edge: #21201e;
+  --qd-container-border: #363431;
+  --qd-surface-0: #1a1918;
+  --qd-surface-1: #21201e;
+  --qd-surface-2: #292826;
+  --qd-surface-3: #312f2d;
+  --qd-row-black: #21201e;
+  --qd-row-grey: #252422;
+  --qd-row-hover: #2c2a28;
+  --qd-row-active: #262523;
+  --qd-pnl-well: #181716;
+  --qd-table-details-bg: #1a1918;
+  --qd-card-bg: #252422;
+  --qd-group-divider: #363431;
+  --qd-well-edge: #363431;
+  --qd-nav-container-bg: #131211;
+  --qd-nav-container-border: #363431;
+  --qd-nav-hover-bg: #2b2a28;
+  --qd-nav-selected-bg: #312f2d;
+  --qd-tab-hover-bg: #2b2a28;
+  --qd-popup-bg: #282725;
+  --qd-popup-border: #3a3835;
+  --qd-popup-hover: #302e2c;
+  --qd-popup-selected: #363431;
+  --qd-tip-bg: #302e2c;
+  --qd-tip-border: #3a3835;
+  --qd-input-bg: #191817;
+  --qd-input-focus-bg: #21201e;
+  --qd-secondary-bg: #292826;
+  --qd-secondary-border: #3a3835;
+  --qd-secondary-hover-bg: #312f2d;
+  --qd-toggle-on-bg: #312f2d;
+  --qd-chart-grid: #252422;
+  --qd-chart-edge: #363431;
+  --qd-text-strong: #efece8;
+  --qd-text-primary: #d8d4ce;
+  --qd-text-secondary: #b6b1aa;
+  --qd-text-tertiary: #9b968f;
+  --qd-text-muted: #9b968f;
+  --qd-chrome-primary: #d8d4ce;
+  --qd-chrome-secondary: #b6b1aa;
+  --qd-chrome-muted: #9b968f;
+  --qd-live: #efece8;
+  --qd-value: #d8d4ce;
+  --qd-group-title: #b6b1aa;
+  --qd-form-label: #b6b1aa;
+  --qd-table-header-text: #d8d4ce;
+  --qd-nav-text: #b6b1aa;
+  --qd-nav-icon: #9b968f;
+  --qd-seg-text: #b6b1aa;
+  --qd-secondary-text: #d8d4ce;
+}
+
+/* The gear menu's swatch for each folder background: each one's own band, fixed,
+   so the four dots show the four choices whatever is picked. */
+:root {
+  --qd-swatch-dusk: #2c3036;
+  --qd-swatch-charcoal: #30343a;
+  --qd-swatch-ink: #2e333b;
+  --qd-swatch-espresso: #312f2d;
+}
+
+/* A theme, look or tone switch lands in one step (theme/mode.tsx): no element
+   fades from the old palette while the charts are already in the new one. */
+html[data-qd-theme-switching] *,
+html[data-qd-theme-switching] *::before,
+html[data-qd-theme-switching] *::after {
+  transition: none !important;
+}
+
+/*
+ * ============================================================
+ * STUDIO LOOK — `data-look="studio"` on <html> (theme/mode.tsx), 2026-10-14
+ * ============================================================
+ *
+ * Chosen by the user from a before/after mockup (docs/design/visual-mock.html):
+ * depth, figures that lead, softer data colour, chart polish, table rhythm, one
+ * brand accent. Standard and Folder stay one click away in Appearance.
+ *
+ * Depth comes from four neutral steps, darkest outward: the gap between
+ * containers (#0b0b0c), the data body (#161617), the header band a tone up
+ * (#1d1d1f), and a 6% white lip where light would catch an edge. The darker
+ * ground is the opposite of the standard look's lighter canvas on purpose: the
+ * containers read as raised plates rather than holes.
+ *
+ * Dark only. In light mode the standard light palette applies.
+ */
+:root[data-look="studio"]:not([data-theme="light"]) {
+  --qd-studio-head: #1d1d1f;
+  --qd-studio-body: #161617;
+  --qd-studio-lip: rgb(255 255 255 / 6%);
+  --qd-studio-rule: rgb(255 255 255 / 7%);
+
+  /* Grounds */
+  --qd-bg-app: #0e0e0f;
+  --qd-bg-workspace: #0b0b0c;
+  --qd-bg-panel: #161617;
+  --qd-container-surface: #161617;
+  --qd-container-glow: #161617;
+  --qd-container-glow-centre: #161617;
+  --qd-container-glow-edge: #161617;
+  --qd-container-border: #2a2a2c;
+  --qd-container-header-divider: var(--qd-studio-rule);
+  --qd-strip-edge: var(--qd-container-border);
+  --qd-header-rule: var(--qd-container-header-divider);
+  --qd-strip-cast: none;
+  /* The active container is marked by its tab's crimson line (dock.css), so its outline is quiet. */
+  --qd-container-active-border: rgb(255 255 255 / 12%);
+  --qd-surface-0: #121213;
+  --qd-surface-1: #161617;
+  --qd-surface-2: #1d1d1f;
+  --qd-surface-3: #242426;
+  --qd-well-bg: #111112;
+  --qd-well-edge: #262628;
+  --qd-pnl-well: #0e0e0f;
+  --qd-card-bg: #1a1a1b;
+  --qd-card-border: rgb(255 255 255 / 7%);
+  --qd-group-divider: #242426;
+
+  /* Tabs: the active tab is the header band's own tone, so tab and strip read as one piece. */
+  --qd-tab-active-bg: var(--qd-studio-head);
+  --qd-tab-inactive-bg: transparent;
+  --qd-tab-hover-bg: #161617;
+  --qd-tab-active-border: transparent;
+
+  /* Charts sit on a well a step under the body. */
+  --qd-chart-ground: #111112;
+  --qd-chart-toolbar-bg: var(--qd-studio-head);
+  --qd-chart-grid: #1e1e20;
+  --qd-chart-grid-major: #252527;
+  --qd-chart-legend-bg: rgb(22 22 23 / 86%);
+  --qd-chart-legend-border: rgb(255 255 255 / 8%);
+
+  /* Softer, deeper data colour: gain and loss at one lightness, less glare on black. */
+  --qd-positive: #3fb37f;
+  --qd-negative: #ef6461;
+  --qd-positive-rgb: 63 179 127;
+  --qd-negative-rgb: 239 100 97;
+  --qd-buy: #3fb37f;
+  --qd-sell: #ef6461;
+  --qd-buy-rgb: 63 179 127;
+  --qd-sell-rgb: 239 100 97;
+  --qd-mtm-up: var(--qd-positive);
+  --qd-mtm-down: var(--qd-negative);
+
+  /* Tables: a flat header on a hairline, quiet labels, a faint zebra, a stronger hover. */
+  --qd-row-black: #161617;
+  --qd-row-grey: #19191a;
+  --qd-row-hover: #222224;
+  --qd-row-active: #1a1a1b;
+  --qd-table-header-top: var(--qd-studio-head);
+  --qd-table-header-bottom: var(--qd-studio-head);
+  --qd-table-header-text: #a1a1a6;
+  --qd-table-details-bg: #121213;
+  --qd-hover-wash-alpha: 4.5%;
+
+  /* Popups lift a step off the body. */
+  --qd-popup-bg: #1c1c1e;
+  --qd-popup-border: #2e2e30;
+  --qd-popup-hover: #26262a;
+  --qd-popup-selected: #2c2c30;
+  --qd-tip-bg: #222224;
+  --qd-tip-border: #343437;
+}
+
+/*
+ * PLATE LOOK (data-look="plate", theme/mode.tsx), 2026-10-17. A container shape of QuantDesk's own:
+ * every container a raised, rounded plate on a gap, its tab strip a header band fused to it, and
+ * the active one marked by four corner brackets (dock.css). The app's own font and colours, every
+ * one of them: the user turned down a new face and a new palette ("the font style is very bad,
+ * the colour choice is bad, don't use something different"). Only the shape is new.
+ *
+ * Dark only. In light mode the standard look applies.
+ */
+:root[data-look="plate"]:not([data-theme="light"]) {
+  /* The header band a step up from the body, from the app's own surface steps. */
+  --qd-plate-head: var(--qd-surface-2);
+  --qd-plate-lip: rgb(255 255 255 / 5%);
+  --qd-plate-rule: var(--qd-container-header-divider);
+  --qd-strip-edge: var(--qd-container-border);
+  --qd-header-rule: var(--qd-container-header-divider);
+  --qd-strip-cast: none;
+  /* The brackets wear the active container's own indigo. */
+  --qd-brand: var(--qd-container-active-border);
+  --qd-dock-gutter: 8px;
+  --qd-tab-active-bg: var(--qd-plate-head);
+  --qd-tab-inactive-bg: transparent;
+  --qd-tab-hover-border: transparent;
+}

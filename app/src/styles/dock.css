@@ -1,0 +1,1046 @@
+/*
+ * `:has()` here is always pinned to its exact depth (`:has(> .dv-react-part > [data-well])`, the
+ * panel root is always the react part's child): a descendant `:has([data-well])` was re-checked by
+ * the browser on every DOM change anywhere inside the container, 800 times in 20 s with live
+ * prices running (2026-10-13 trace). Pinned, changes deeper in a panel never reach it.
+ */
+/*
+ * Every rule here is scoped to `:is(.qd-dock, .dv-popout-window)`: the main dock carries
+ * `.qd-dock`, and a popped-out window's container is dockview's own `.dv-popout-window` (it
+ * copies only the `dockview-theme-*` class across). Scoped to `.qd-dock` alone, a pop-out lost
+ * the whole dock look: tab strip, icon spacing, close button, hover-only "+" (2026-10-13).
+ */
+/*
+ * The dock, dressed as a QuantDesk container.
+ *
+ * DEXT's containers are dockview groups, so the styling lands on dockview's own
+ * elements rather than on a wrapper. Inactive containers have no outer outline;
+ * only the selected container receives the focus ring below.
+ */
+
+:is(.qd-dock, .dv-popout-window) .dv-groupview {
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+  /* none in dark mode — Kite's own widget-pane-wrapper is border:0/radius:0/
+     shadow:none, panels tile edge to edge; Paper Dashboard's own card shadow in
+     light mode, where cards are told apart from the page by shadow alone. */
+  box-shadow: var(--qd-container-shadow);
+}
+
+/*
+ * Only the active group receives an outline.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container {
+  border: 0;
+  border-radius: 0 var(--qd-dock-radius) var(--qd-dock-radius) var(--qd-dock-radius);
+  overflow: hidden;
+}
+
+:is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group > .dv-content-container {
+  /* An inset outline marks only the selected container. Unlike toggling a real
+     border, this does not change its content size when focus moves. */
+  outline: 1px solid var(--qd-container-active-border);
+  outline-offset: -1px;
+}
+
+/*
+ * Standard look: the active tab opens into its container with no line under it (user,
+ * 2026-10-17), and the frame keeps its rounded top-right corner.
+ *
+ * The outline is an overlay on the content box (not an outline or box-shadow: `data-well`
+ * containers already use box-shadow), drawn whole with its rounded corner. The tab strip
+ * then overlaps the content box's top pixel row and stacks above it, so the active tab's
+ * opaque fill covers the outline's top edge exactly under that tab; the strip is transparent
+ * everywhere else, so the line still shows under every other tab. On every container, active
+ * or not, so the content never shifts a pixel when focus moves.
+ */
+html:not([data-look="folder"]):not([data-look="studio"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-tabs-and-actions-container {
+  position: relative;
+  z-index: 1;
+  margin-bottom: -1px;
+}
+html:not([data-look="folder"]):not([data-look="studio"]):not([data-look="plate"]:not([data-theme="light"])) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group > .dv-content-container {
+  outline: none;
+  position: relative;
+  /* Its own stacking context: the overlay's z-index stays inside, under the strip. */
+  z-index: 0;
+}
+html:not([data-look="folder"]):not([data-look="studio"]):not([data-look="plate"]:not([data-theme="light"])) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group > .dv-content-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--qd-container-active-border);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/*
+ * The container's interior, and the inset every panel inherits.
+ *
+ * Padding lands here rather than in each panel: the content box is the one element
+ * that exists once per container, so an inset set here cannot disagree between two
+ * panels docked side by side — which is exactly what happened while `PanelBody`,
+ * `ChartPanel` and `AccountsPanel` each decided their own.
+ *
+ * The glow is painted on the same box and is unaffected: a background fills the
+ * padding box, so the light still reaches the container's own edges while the
+ * content sits in from them.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container {
+  background: var(--qd-container-glow);
+  padding: var(--qd-container-pad);
+  /* Every container's header sits flush under its tab strip, as the chart's has since
+     2026-09-21: a data header 4px lower than a chart header beside it read as drift (2026-10-16
+     header audit). Every dock panel opens with its PanelToolbar, so nothing else meets the tabs. */
+  padding-top: 0;
+  box-sizing: border-box;
+  /* Each container is a layout/paint island. A splitter invalidating one OI
+     table cannot pull the other two into the same layout traversal. */
+  contain: layout paint;
+}
+
+/*
+ * A panel that runs edge to edge sideways (the chart) marks itself `data-bleed-x`,
+ * and its container drops only the left and right inset — the top and bottom stay,
+ * so its toolbar does not move. Only the visible panel is attached to the content
+ * box, so a chart sitting in a hidden tab does not strip the inset from the one showing.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-bleed-x]) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* `data-bleed-y`: the bottom inset goes too, so the panel fills to the container's foot (Chart, user 2026-10-17). */
+:is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-bleed-y]) {
+  padding-bottom: 0;
+}
+
+/*
+ * The chart's container is grey inside (`data-chart-ground`), so its black
+ * toolbar and black chart box read as two separate pieces with grey between
+ * them. Scoped to that panel only — every other container keeps its own ground.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-chart-ground]) {
+  background: var(--qd-chart-ground);
+  /* The toolbar sits flush under the tab strip — no grey gap above it, on request 2026-09-21. */
+  padding-top: 0;
+}
+
+/*
+ * A grey-inside container that must still read as a container (`data-well`,
+ * the Position Tracker): its grey is a shade darker than the workspace, and a
+ * hairline runs down its sides and along its bottom, so black toolbar, edges
+ * and black footer close one frame round the grey, and the tab fuses into it.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-well]) {
+  background: var(--qd-well-bg);
+  /* The black footer is the frame's bottom edge: nothing grey under it. */
+  padding-bottom: 0;
+  box-shadow:
+    inset 1px 0 0 var(--qd-well-edge),
+    inset -1px 0 0 var(--qd-well-edge),
+    inset 0 -1px 0 var(--qd-well-edge);
+}
+
+/*
+ * The gap between panels, themed: 0 in dark mode — Kite's panels tile edge to
+ * edge, split only by its splitter — and a real gap in light mode, where Paper
+ * Dashboard's cards sit apart on the page with visible space between them.
+ *
+ * LEAF views only — `:has(> .dv-groupview)` — and that qualifier is load-bearing,
+ * not tidiness. A `.dv-view` holds either a container (`.dv-groupview`) or a
+ * nested split (`.dv-branch-node`), and dockview sizes both in JS:
+ *
+ *     view.container.style.height = size + 'px';   // the DOM box
+ *     view.view.layout(view.size - margin, ...);   // what the child is TOLD
+ *
+ * The child is handed the MODEL size, never the element's measured height. So
+ * padding a branch's view with `box-sizing: border-box` leaves the nested
+ * splitview laying its children out across `size` px inside a box that is only
+ * `size - 2 * gutter` — and `.dv-split-view-container` is `overflow: hidden`,
+ * which clips the difference off the far end. That is the bottom of the last
+ * row after a row split, and the right edge of the last column after a column
+ * one. A leaf has no such child to mislead, so the gutter is safe there.
+ *
+ * This also stops the gutter doubling at a nest boundary, where the branch's
+ * own padding used to stack on top of the leaf's.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-view-container .dv-view:has(> .dv-groupview) {
+  padding: var(--qd-dock-gutter);
+  box-sizing: border-box;
+}
+
+/*
+ * No divider under the strip — Kite's own wm-tab-bar has border-bottom: 0.
+ * There is no separate "container header bar" to draw a line under: the active
+ * tab's fill already matches the content below it exactly (see .dv-active-tab),
+ * so the tab itself is the only header this container has, and it runs straight
+ * into its own panel with nothing drawn between them.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container {
+  height: var(--qd-dock-tab-h);
+  min-height: var(--qd-dock-tab-h);
+  /* Across the container's full width, so the whole header band is one hover
+     target: hovering anywhere beside the tabs washes it and shows the "+"
+     (shell/HeaderAdd.tsx). It was fit-content once, and then only the tabs
+     themselves reacted. At rest it is still transparent, so nothing is drawn
+     past the tabs; the "+" sits in dockview's left-actions slot, straight after
+     the last tab, and the empty void after it stays the group's drag handle.
+     max-width keeps a narrow group's extra tabs inside dockview's own scrolling
+     .dv-tabs-container rather than clipped by .dv-groupview. */
+  max-width: 100%;
+  background: transparent;
+}
+
+/*
+ * A squeezed group's tabs scroll sideways under a hairline bar that shows only
+ * while the pointer is on the header strip — dockview drew it always, in #888.
+ *
+ * `scrollbar-width: auto` is the actual fix, not a default: dockview sets `thin`,
+ * and Chromium ignores every ::-webkit-scrollbar rule on an element that sets the
+ * standard property, so neither theme.ts's hover rules nor dockview's own 3px
+ * height ever reached this strip. Kept at dockview's 3px so the strip does not
+ * change shape; a vertical wheel over the strip scrolls it (shell/Workspace.tsx).
+ */
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container .dv-tabs-container {
+  scrollbar-width: auto;
+}
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container .dv-tabs-container::-webkit-scrollbar {
+  height: 3px;
+}
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container .dv-tabs-container::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container:hover .dv-tabs-container::-webkit-scrollbar-thumb {
+  background: var(--qd-scrollbar-thumb-hover);
+}
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container .dv-tabs-container::-webkit-scrollbar-thumb:active {
+  background: var(--qd-scrollbar-thumb-active);
+}
+
+:is(.qd-dock, .dv-popout-window) .dv-tab {
+  display: flex;
+  align-items: center;
+  height: var(--qd-dock-tab-h);
+  padding: 0 10px;
+  font-size: var(--qd-size-caption);
+  /* 400, not 500: Kite's own tab-title is font-weight 400 — its tab strip carries
+     no extra weight, only the active state (below) marks itself out. */
+  font-weight: 400;
+  /* Apple tracking for 12px (−0.12px there). Typography only — the tab's shape,
+     border and fill are the container's and stay as they are. */
+  letter-spacing: var(--qd-tracking-caption);
+  border: 1px solid transparent;
+  border-bottom-color: transparent;
+  /* box-shadow too: the active container's outline (drawn as an inset shadow below) fades in
+     when a container is clicked into, instead of snapping on (2026-10-11). */
+  transition: background-color var(--qd-dur) var(--qd-ease), color var(--qd-dur) var(--qd-ease),
+    border-color var(--qd-dur) var(--qd-ease), box-shadow var(--qd-dur) var(--qd-ease);
+}
+
+:is(.qd-dock, .dv-popout-window) .dv-tab.dv-active-tab {
+  /* Capped at 6px: qd-dock-radius is 12px in light mode, too round for a 30px tab. */
+  border-top-left-radius: min(var(--qd-dock-radius), 6px);
+  border-top-right-radius: min(var(--qd-dock-radius), 6px);
+  height: var(--qd-dock-tab-h);
+  z-index: 2;
+  border-color: transparent;
+  /* Kite's own active tab is still font-weight 400 — the fill alone marks it,
+     nothing is bolded. */
+}
+
+:is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group .dv-tab.dv-active-tab {
+  /* The tab's own 1px border, not an inset shadow: a shadow sits inside the border, a pixel
+     in from the container's edge line, and the frame stepped and broke where the tab meets
+     the container (2026-10-17). The border runs the tab's full height into the overlap row. */
+  border-color: var(--qd-container-active-border);
+  /* No bottom border at all (a transparent one mitres the side's last pixel into a notch);
+     the 1px goes to padding so the title does not move. */
+  border-bottom-width: 0;
+  padding-bottom: 1px;
+}
+
+:is(.qd-dock, .dv-popout-window) .dv-tab.dv-inactive-tab:hover {
+  background-color: var(--qd-tab-hover-bg);
+  color: var(--qd-tab-hover-text);
+  /* A soft grey frame round the hovered tab (user, 2026-10-17), in the active tab's shape:
+     top and sides, rounded top corners. The tab's 1px border is always there (transparent at
+     rest), so the frame appearing moves nothing. */
+  border-color: var(--qd-tab-hover-border);
+  border-bottom-color: transparent;
+  border-top-left-radius: min(var(--qd-dock-radius), 6px);
+  border-top-right-radius: min(var(--qd-dock-radius), 6px);
+}
+
+:is(.qd-dock, .dv-popout-window) .dv-default-tab-action {
+  border-radius: 3px;
+}
+
+/*
+ * A tab's insides (shell/DeskTab.tsx): the widget's icon, its title, and a
+ * small close button on the right that shows only while the tab is hovered.
+ * The button keeps its room while hidden, so the tab never changes width
+ * under the pointer. The tab's own padding is trimmed on the right, where the
+ * button's room already spaces it from the next tab.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-tab:has(> .qd-tab) {
+  padding-right: 4px;
+}
+:is(.qd-dock, .dv-popout-window) .qd-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+}
+:is(.qd-dock, .dv-popout-window) .qd-tab-icon {
+  flex: 0 0 auto;
+  opacity: 0.8;
+  transition: opacity var(--qd-dur-fast) var(--qd-ease);
+}
+:is(.qd-dock, .dv-popout-window) .dv-active-tab .qd-tab-icon,
+:is(.qd-dock, .dv-popout-window) .dv-tab:hover .qd-tab-icon {
+  opacity: 1;
+}
+:is(.qd-dock, .dv-popout-window) .qd-tab-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:is(.qd-dock, .dv-popout-window) .qd-tab-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: -2px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--qd-dur-fast) var(--qd-ease), background-color var(--qd-dur-fast) var(--qd-ease);
+}
+:is(.qd-dock, .dv-popout-window) .dv-tab:hover .qd-tab-close,
+:is(.qd-dock, .dv-popout-window) .qd-tab-close:focus-visible {
+  opacity: 0.75;
+}
+:is(.qd-dock, .dv-popout-window) .qd-tab-close:hover {
+  opacity: 1;
+  background: var(--qd-tab-hover-bg);
+}
+
+/*
+ * The splitter between two containers.
+ *
+ * Dockview's sash is a 4px box — hard-coded in its JS positioning, so its width
+ * cannot change — centred in a gap of 2 x --qd-dock-gutter (6px dark, 12px light).
+ * Hovering most of that gap used to show a plain arrow. The grab zone is widened
+ * with an invisible pseudo-element instead: it reaches across the whole gap and
+ * one pixel onto each container's edge, so anywhere "between the containers" is
+ * the splitter. One pixel and no more — a container's own scrollbar sits at that
+ * edge and must stay reachable.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-sash {
+  --qd-sash-reach: calc(var(--qd-dock-gutter) - 1px);
+  background: transparent;
+}
+:is(.qd-dock, .dv-popout-window) .dv-sash::before {
+  content: "";
+  position: absolute;
+}
+:is(.qd-dock, .dv-popout-window) .dv-horizontal > .dv-sash-container > .dv-sash::before {
+  inset: 0 calc(-1 * var(--qd-sash-reach));
+}
+:is(.qd-dock, .dv-popout-window) .dv-vertical > .dv-sash-container > .dv-sash::before {
+  inset: calc(-1 * var(--qd-sash-reach)) 0;
+}
+
+/*
+ * Hover lights the splitter after a short pause (dockview's default was 500ms,
+ * which read as "nothing is there"); the pause keeps it from flickering as the
+ * pointer merely crosses the gap. Matched to dockview's own rule's specificity
+ * plus :is(.qd-dock, .dv-popout-window), so it wins.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-split-view-container .dv-sash-container .dv-sash.dv-enabled:hover,
+:is(.qd-dock, .dv-popout-window) .dv-split-view-container .dv-sash-container .dv-sash.dv-enabled:active {
+  background-color: var(--qd-dock-accent);
+  transition: background-color var(--qd-dur-fast) var(--qd-ease) 120ms;
+}
+
+/* While dragging the splitter tracks the pointer directly, with no transition
+   trailing behind, and stays lit even when the pointer outruns it. */
+html[data-qd-layout-resizing] :is(.qd-dock, .dv-popout-window) .dv-split-view-container .dv-sash-container .dv-sash.dv-enabled:active {
+  background-color: var(--qd-dock-accent);
+  transition: none;
+}
+
+/* The gesture's cursor is the captured sash's own (core/layoutResize.ts), never a
+   `html[data-qd-layout-resizing] *` rule: toggling a universal rule restyled every
+   element on the desk at the press and the release of each drag — 55–80 ms twice
+   per drag, measured live 2026-10-11. Keep every rule keyed on this flag aimed at
+   html itself or a named class. */
+html[data-qd-layout-resizing] {
+  user-select: none;
+}
+
+/* Dockview switches pointer events off on every panel when a splitter drag starts
+   and on again at the release (inline style on each .dv-view). pointer-events is
+   inherited, so each switch restyled the whole desk — 3,935 elements, 55–73 ms at
+   the press and again at the release, measured live 2026-10-11. The sash holds
+   pointer capture for the gesture (core/layoutResize.ts), so no panel can receive
+   the pointer anyway: the panels keep their pointer events, and the switch changes
+   nothing (16 elements restyled, ~4 ms). */
+html[data-qd-layout-resizing] :is(.qd-dock, .dv-popout-window) .dv-view {
+  pointer-events: auto !important;
+}
+
+/*
+ * Dragging a panel by its header (components/dockDrag.ts).
+ *
+ * The container it is leaving fades, so it is clear which one is moving, and the
+ * drag image is a small chip naming the panel instead of a snapshot of the whole
+ * header strip. The drop overlay is dockview's own, the same one a tab drag shows.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview.qd-drag-source > .dv-content-container {
+  opacity: 0.45;
+  transition: opacity var(--qd-dur-fast) var(--qd-ease);
+}
+
+.qd-drag-ghost {
+  position: fixed;
+  top: -1000px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  height: var(--qd-dock-tab-h);
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: var(--qd-size-caption);
+  font-weight: var(--qd-weight-regular);
+  letter-spacing: var(--qd-tracking-caption);
+  white-space: nowrap;
+  color: var(--qd-text-strong);
+  background: var(--qd-tab-active-bg);
+  border: 1px solid var(--qd-container-active-border);
+  border-radius: min(var(--qd-dock-radius), 6px);
+  pointer-events: none;
+}
+
+/*
+ * -- panels arriving and leaving --------------------------------------
+ *
+ * dockview builds and tears down its own DOM, so a panel cannot be animated
+ * from React. These hook its classes instead.
+ *
+ * A container GROWS out of the canvas when it is added and drops back into it
+ * when it is closed, rather than appearing and vanishing. The dock is a space
+ * the desk arranges all day; a panel that blinks in gives no sense of where it
+ * came from or that the layout changed around it.
+ *
+ * Only `transform` and `opacity` move. Both are compositor properties, so the
+ * animation runs off the main thread and keeps its frames while the market feed
+ * and a table render are both working. Animating width or height here would
+ * reflow every neighbouring panel on every frame — dockview sizes its views in
+ * JavaScript, so that cost lands on the same thread it runs on.
+ *
+ * `backwards` holds the opening frame through any delay, so a container cannot
+ * flash at full size before its animation takes over.
+ */
+@keyframes qd-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/*
+ * Only while `.qd-entering` is on the group (shell/Workspace.tsx adds it when the
+ * group is created and takes it off when the animation ends). It used to sit on
+ * every content box always — and a CSS animation replays whenever its element is
+ * re-attached, which dockview does to the NEIGHBOURS of a container being split,
+ * moved or restored. One drag then re-ran the scale-in on several live containers
+ * at once, each re-rastering its tables and charts: the stutter while arranging.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview.qd-entering > .dv-content-container {
+  animation: qd-panel-in var(--qd-dur-enter) var(--qd-ease-spring) backwards;
+  transform-origin: center;
+  /* NO will-change. It was here, and it left every panel on its own
+     compositor layer permanently - where text loses subpixel antialiasing
+     and is resampled at fractional DPI, which is the "hazy" report this
+     project has fixed before. A one-shot entrance does not need it: the
+     browser promotes for the duration and demotes afterwards. */
+}
+
+/*
+ * The tab strip fades in a touch behind its content, so a new container reads as
+ * one object arriving rather than a strip and a body appearing together.
+ */
+@keyframes qd-tab-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+:is(.qd-dock, .dv-popout-window) .dv-groupview.qd-entering .dv-tab {
+  animation: qd-tab-in var(--qd-dur) var(--qd-ease-out) 60ms backwards;
+}
+
+/*
+ * The whole animation block is dropped for anyone who asks for reduced motion.
+ * theme.ts collapses TRANSITIONS globally, but these are keyframe animations on
+ * elements React never renders, so they need saying here as well.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :is(.qd-dock, .dv-popout-window) .dv-groupview.qd-entering > .dv-content-container,
+  :is(.qd-dock, .dv-popout-window) .dv-groupview.qd-entering .dv-tab {
+    animation: none;
+  }
+}
+
+/*
+ * Hovering a container's header strip washes it light grey and reveals its "+"
+ * (shell/HeaderAdd.tsx), which adds another panel to that container as a tab.
+ * The "+" is only faded, never removed, so its space is held and the tabs do not
+ * shift sideways when the pointer arrives. Focus inside the strip, or the menu
+ * being open, keeps it visible for the keyboard.
+ */
+/* The wash covers only the strip's empty part, from the "+" onward, never behind the tabs
+   (user, 2026-10-17): dockview's action slots and void, not the strip itself. */
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container > :is(.dv-left-actions-container, .dv-void-container, .dv-right-actions-container) {
+  transition: background-color var(--qd-dur-fast) var(--qd-ease);
+}
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container:hover > :is(.dv-left-actions-container, .dv-void-container, .dv-right-actions-container) {
+  background: color-mix(in srgb, var(--qd-row-hover-wash) 6%, transparent);
+}
+:is(.qd-dock, .dv-popout-window) .qd-header-add {
+  opacity: 0;
+  transition: opacity var(--qd-dur-fast) var(--qd-ease);
+}
+:is(.qd-dock, .dv-popout-window) .dv-tabs-and-actions-container:hover .qd-header-add,
+:is(.qd-dock, .dv-popout-window) .qd-header-add:focus-within,
+:is(.qd-dock, .dv-popout-window) .qd-header-add[data-open] {
+  opacity: 1;
+}
+
+/*
+ * ============================================================
+ * FOLDER LOOK (data-look="folder" on <html>, theme/mode.tsx) — 2026-10-08
+ * ============================================================
+ *
+ * Each container is a folder: the tab and the header strip are one band
+ * (--qd-folder-band, a step quieter on a resting container), and the data sits
+ * in a darker body cut --qd-folder-cut inside it on the left, right and bottom.
+ *
+ * The band is the content box's own background; the body is the panel root
+ * (`.dv-react-part`, dockview's one wrapper per panel) painted from the bottom of
+ * its header down. The header's height comes from what the panel puts first:
+ * a `PanelToolbar` (--qd-header-h), the chart family's strip (--qd-strip-h), or
+ * nothing at all — then the whole panel is body and the band is only the frame.
+ *
+ * The cut plus the panel root's own inset add up to the standard look's
+ * --qd-container-pad, so content lands on the same rule in both looks.
+ */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container,
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-chart-ground]),
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-well]) {
+  --qd-folder-ground: var(--qd-folder-rest);
+  background: var(--qd-folder-ground);
+  padding: 0 var(--qd-folder-cut) var(--qd-folder-cut);
+  /* The raised plate: a lit hairline down both sides (--qd-folder-rim, set by
+     the near-black backgrounds) and a shaded lower edge. No top edge here: it
+     would rule a seam under the tab, which carries its own lit top instead. */
+  box-shadow:
+    inset 1px 0 0 var(--qd-folder-rim, transparent),
+    inset -1px 0 0 var(--qd-folder-rim, transparent),
+    inset 0 -1px 0 var(--qd-folder-shade, transparent);
+  border-radius: 0 8px 8px 8px;
+  transition: background-color var(--qd-dur) var(--qd-ease);
+}
+
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group > .dv-content-container {
+  --qd-folder-ground: var(--qd-folder-band);
+  background: var(--qd-folder-ground);
+  /* The brighter band marks the selected folder; no outline around it. */
+  outline: none;
+}
+
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-content-container > .dv-react-part {
+  --qd-folder-head: 0px;
+  --qd-folder-foot: 0px;
+  position: relative;
+  box-sizing: border-box;
+  padding: 0 calc(var(--qd-container-pad) - var(--qd-folder-cut)) calc(var(--qd-container-pad) - var(--qd-folder-cut));
+  background: linear-gradient(
+    to bottom,
+    transparent var(--qd-folder-head),
+    var(--qd-folder-body) var(--qd-folder-head)
+  );
+}
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-react-part:has(.qd-panel-toolbar) {
+  --qd-folder-head: var(--qd-header-h);
+}
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-react-part:has(.qd-panel-toolbar[data-strip]) {
+  --qd-folder-head: var(--qd-strip-h);
+}
+/* An edge-to-edge panel (the chart) keeps the 3px band frame but loses the inner inset. */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-react-part:has(> [data-bleed-x]) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* The chart family's strip paints the body colour and a rule of its own; in a
+   folder it sits on the band like every other header, closed off from the chart
+   below by a faint lit hairline (--qd-strip-rule). Band and body alone are only
+   ~1.5:1 apart, and the toolbar and chart read as one surface (2026-10-09, on
+   request: "toolbar and chart separation not coming — add a slight white border"). */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) div:has(> .qd-panel-toolbar[data-strip]) {
+  background: transparent;
+  box-shadow: inset 0 -1px 0 var(--qd-strip-rule, transparent);
+}
+
+/* Outlined controls in a folder's header — pickers, the canvas swatch, ghost
+   buttons — draw their edge in --qd-container-border / --qd-group-divider,
+   which are tuned for the darker BODY. On the band they all but vanished (Dusk:
+   #2e3237 on #2c3036, 1.03:1). Inside a header strip both point at the band's
+   own edge colour instead — the strip's scroll arrows (its siblings) too. */
+html[data-look="folder"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) div:has(> .qd-panel-toolbar) {
+  --qd-container-border: var(--qd-band-edge);
+  --qd-group-divider: var(--qd-band-edge);
+  --qd-popup-border: var(--qd-band-edge);
+}
+
+/* A panel that paints the chart's ground over its whole body (Straddle Lab)
+   would hide the band behind its strip; in a folder the panel root already
+   paints the body from under the strip down, so the panel's own ground goes. */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) [data-chart-ground] {
+  background: transparent;
+}
+
+/* The tab is part of the band: no focus outline drawn round it. */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group .dv-tab.dv-active-tab {
+  box-shadow:
+    inset 0 1px 0 var(--qd-folder-rim, var(--qd-folder-lip, transparent)),
+    inset 1px 0 0 var(--qd-folder-rim, transparent),
+    inset -1px 0 0 var(--qd-folder-rim, transparent);
+}
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-tab.dv-active-tab {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  /* The plate's lit top edge, where light would catch it. */
+  box-shadow:
+    inset 0 1px 0 var(--qd-folder-rim, var(--qd-folder-lip, transparent)),
+    inset 1px 0 0 var(--qd-folder-rim, transparent),
+    inset -1px 0 0 var(--qd-folder-rim, transparent);
+}
+
+/* A panel footer (PanelFooter) sits on the band too, so the body is closed by
+   band above and below. The body stops at the footer's top edge. */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-react-part:has(> * > .qd-panel-footer:last-child),
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-react-part:has(> .qd-panel-footer:last-child) {
+  --qd-folder-foot: calc(var(--qd-control-h) + var(--qd-container-pad) - var(--qd-folder-cut));
+  background: linear-gradient(
+    to bottom,
+    transparent var(--qd-folder-head),
+    var(--qd-folder-body) var(--qd-folder-head),
+    var(--qd-folder-body) calc(100% - var(--qd-folder-foot)),
+    transparent calc(100% - var(--qd-folder-foot))
+  );
+}
+
+/* A footer that paints its own ground (Position Tracker's) takes the band's. */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .qd-panel-footer {
+  background: transparent;
+}
+
+/*
+ * The cut: the body's bottom corners are rounded into the band, as in the F1
+ * mockup. Tables and edge-to-edge charts paint square right over a rounded
+ * background, so the curve is drawn ON TOP instead — two band-coloured corner
+ * caps sitting at the body's bottom edge (above the footer when there is one).
+ * They never take the pointer.
+ */
+html[data-look="folder"] :is(.qd-dock, .dv-popout-window) .dv-react-part::after {
+  --qd-folder-r: 8px;
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--qd-folder-foot);
+  height: var(--qd-folder-r);
+  pointer-events: none;
+  z-index: 6;
+  background:
+    radial-gradient(circle at 100% 0, transparent calc(var(--qd-folder-r) - 1px), var(--qd-folder-ground) var(--qd-folder-r)) left bottom / var(--qd-folder-r) var(--qd-folder-r) no-repeat,
+    radial-gradient(circle at 0 0, transparent calc(var(--qd-folder-r) - 1px), var(--qd-folder-ground) var(--qd-folder-r)) right bottom / var(--qd-folder-r) var(--qd-folder-r) no-repeat;
+}
+
+/* While a drag shows the drop map (shell/DropMap.tsx), a header's own "+" steps
+   aside: the map's "add as a tab" slot takes that spot. */
+html[data-qd-drop-map] :is(.qd-dock, .dv-popout-window) .qd-header-add {
+  visibility: hidden;
+}
+
+/* The note that a stall report was copied (core/stallRecorder.ts, Ctrl Shift S). */
+.qd-stall-note {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10000;
+  padding: 8px 12px;
+  font-size: var(--qd-size-caption);
+  color: var(--qd-text-strong);
+  background: var(--qd-popup-bg);
+  border: 1px solid var(--qd-group-divider);
+  border-radius: min(var(--qd-dock-radius), 6px);
+  pointer-events: none;
+}
+
+/*
+ * LIGHT, standard look: each container is one card (2026-10-09, "Mist",
+ * tokens.css). The tab strip used to float on the canvas above a white body,
+ * so a container read as a white box with loose tabs over it. Now the strip is
+ * the card's own header band (--qd-tab-strip-bg), the active tab is the body's
+ * face running into it, and a hairline ring plus the short shadow lift the
+ * whole card off the canvas. Dark keeps Kite's edge-to-edge tiling.
+ */
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) .dv-groupview {
+  border-radius: var(--qd-dock-radius);
+  box-shadow: 0 0 0 1px var(--qd-container-ring), var(--qd-container-shadow);
+}
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-tabs-and-actions-container,
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-tabs-and-actions-container:hover {
+  background: var(--qd-tab-strip-bg);
+  box-shadow: inset 0 -1px 0 var(--qd-container-ring);
+}
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container {
+  border-radius: 0 0 var(--qd-dock-radius) var(--qd-dock-radius);
+}
+/* The active tab is the body's face, open into it: it covers the strip's rule. */
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) .dv-tab.dv-active-tab {
+  box-shadow: inset 1px 0 0 var(--qd-container-ring), inset -1px 0 0 var(--qd-container-ring);
+}
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group .dv-tab.dv-active-tab {
+  box-shadow: inset 1px 0 0 var(--qd-container-ring), inset -1px 0 0 var(--qd-container-ring),
+    inset 0 2px 0 var(--qd-dock-accent);
+}
+
+/*
+ * LIGHT, standard look: a chart container's toolbar is its own band (2026-10-09,
+ * on request: toolbar and chart read as one white sheet). The chart family's
+ * strip takes --qd-toolbar-bg, a step below the chart's face, closed off by a
+ * hairline; the chart inside is left exactly as it was. The container's
+ * active tab takes the same shade, so tab and toolbar read as one header.
+ */
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) div:has(> .qd-panel-toolbar[data-strip]) {
+  background: var(--qd-toolbar-bg);
+  box-shadow: inset 0 -1px 0 var(--qd-toolbar-rule);
+}
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) .dv-groupview:has(.qd-panel-toolbar[data-strip]) {
+  --dv-activegroup-visiblepanel-tab-background-color: var(--qd-toolbar-bg);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--qd-toolbar-bg);
+}
+
+/*
+ * LIGHT: a chart's own header rows (`data-chart-head`: Day MTM's figures and
+ * account legend, Straddle Lab's combo chips) belong to the header, not to the
+ * plot (2026-10-09, on request: sampled off the desk, they were the chart's
+ * #e6e9ed, so the header ended at the toolbar and the figures ran into the
+ * chart). They take the header's shade, and a hairline closes the header off
+ * from the chart. Dark is unchanged.
+ */
+html[data-theme="light"]:not([data-look="folder"]) :is(.qd-dock, .dv-popout-window) [data-chart-head] {
+  background: var(--qd-toolbar-bg);
+  box-shadow: inset 0 -1px 0 var(--qd-toolbar-rule);
+}
+html[data-theme="light"][data-look="folder"] :is(.qd-dock, .dv-popout-window) [data-chart-head] {
+  background: var(--qd-folder-ground);
+  box-shadow: inset 0 -1px 0 var(--qd-toolbar-rule);
+}
+
+/*
+ * ============================================================
+ * STUDIO LOOK (data-look="studio" on <html>, theme/mode.tsx), 2026-10-14
+ * ============================================================
+ *
+ * From the user's chosen mockup (docs/design/visual-mock.html). Each container
+ * is a raised plate on a near-black ground: the header strip is a band a tone
+ * up from the data body (painted on the panel root, as the folder look does,
+ * with no cut), the plate's edges catch a 6% light, and the selected container
+ * carries the one brand mark on the desk: a 2px crimson line along its tab.
+ * Palette in tokens.css; dark only.
+ */
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container,
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-chart-ground]),
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container:has(> .dv-react-part > [data-well]) {
+  background: var(--qd-studio-body);
+  padding: 0;
+  border-radius: 0 8px 8px 8px;
+  /* The plate: lit sides, a shaded foot. No top edge here: the tab carries its own. */
+  box-shadow:
+    inset 1px 0 0 var(--qd-studio-lip),
+    inset -1px 0 0 var(--qd-studio-lip),
+    inset 0 -1px 0 rgb(0 0 0 / 50%);
+}
+
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group > .dv-content-container {
+  outline: 1px solid var(--qd-container-active-border);
+  outline-offset: -1px;
+}
+
+/* The panel root paints the header band, then the body from under it down. */
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-content-container > .dv-react-part {
+  --qd-studio-headh: 0px;
+  --qd-studio-foot: 0px;
+  box-sizing: border-box;
+  padding: 0 var(--qd-container-pad) var(--qd-container-pad);
+  background: linear-gradient(
+    to bottom,
+    var(--qd-studio-head) var(--qd-studio-headh),
+    var(--qd-studio-body) var(--qd-studio-headh)
+  );
+}
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-react-part:has(.qd-panel-toolbar) {
+  --qd-studio-headh: var(--qd-header-h);
+}
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-react-part:has(.qd-panel-toolbar[data-strip]) {
+  --qd-studio-headh: var(--qd-strip-h);
+}
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-react-part:has(> [data-bleed-x]) {
+  padding-left: 0;
+  padding-right: 0;
+}
+/* A footer sits on the band too, so the body is closed above and below. */
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-react-part:has(> * > .qd-panel-footer:last-child),
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-react-part:has(> .qd-panel-footer:last-child) {
+  --qd-studio-foot: calc(var(--qd-control-h) + var(--qd-container-pad));
+  background: linear-gradient(
+    to bottom,
+    var(--qd-studio-head) var(--qd-studio-headh),
+    var(--qd-studio-body) var(--qd-studio-headh),
+    var(--qd-studio-body) calc(100% - var(--qd-studio-foot)),
+    var(--qd-studio-head) calc(100% - var(--qd-studio-foot))
+  );
+}
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .qd-panel-footer {
+  background: transparent;
+}
+
+/* The chart family's strip already paints the band tone; it closes on a lit hairline. */
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) div:has(> .qd-panel-toolbar[data-strip]) {
+  box-shadow: inset 0 -1px 0 var(--qd-studio-rule);
+}
+
+/* Tabs: the active one is the band's face with a lit top; the selected container's tab
+   carries the crimson line, the only brand colour on the desk. */
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-tab.dv-active-tab {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 var(--qd-studio-lip),
+    inset 1px 0 0 var(--qd-studio-lip),
+    inset -1px 0 0 var(--qd-studio-lip);
+}
+html[data-look="studio"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group .dv-tab.dv-active-tab {
+  box-shadow:
+    inset 0 2px 0 var(--qd-band),
+    inset 1px 0 0 var(--qd-studio-lip),
+    inset -1px 0 0 var(--qd-studio-lip);
+}
+
+/* A chart's floating readout (SimCharts `Readout`): each reading is its own glass pill now
+   (chart/pill.ts), so the row itself carries no chip; it is only sized to its content. */
+html[data-look="studio"]:not([data-theme="light"]) .qd-chart-readout {
+  width: fit-content;
+  max-width: 100%;
+}
+
+/*
+ * A container picked with Shift + click (shell/PickedBar.tsx), to pop out together with others:
+ * a focus-blue ring drawn over its edge, and its pick number in a small badge at the top right,
+ * so the order the window will lay them out in is plain.
+ */
+:is(.qd-dock, .dv-popout-window) .dv-groupview[data-qd-picked] {
+  position: relative;
+}
+:is(.qd-dock, .dv-popout-window) .dv-groupview[data-qd-picked]::after {
+  content: attr(data-qd-picked);
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  border: 2px solid var(--qd-focus);
+  border-radius: var(--qd-dock-radius);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 6px 8px;
+  font-size: var(--qd-size-caption);
+  font-weight: var(--qd-weight-emphasis);
+  color: var(--qd-focus);
+}
+
+/*
+ * PLATE LOOK (data-look="plate" on <html>, theme/mode.tsx), 2026-10-17
+ *
+ * Every container a plate: rounded, on the darker gap, its tab strip a header band fused to it.
+ * The active container is marked by four indigo corner brackets, a focus frame, not an outline;
+ * its open tab by strong ink and an indigo icon, never a box. The app's own font and colours. Dark only.
+ */
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview {
+  position: relative;
+  border-radius: 8px;
+  background: var(--qd-container-surface);
+  box-shadow: inset 0 1px 0 var(--qd-plate-lip), 0 0 0 1px #1f2029;
+}
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-tabs-and-actions-container {
+  background: var(--qd-plate-head);
+  border-radius: 8px 8px 0 0;
+  box-shadow: inset 0 -1px 0 var(--qd-plate-rule);
+}
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview > .dv-content-container {
+  background: var(--qd-container-surface);
+  border-radius: 0 0 8px 8px;
+}
+/* Tabs: no boxes. The open one in strong ink, the rest quiet; the active container's open tab
+   carries the brand on its icon. */
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-tab,
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group .dv-tab.dv-active-tab {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-tab.dv-inactive-tab {
+  color: var(--qd-text-tertiary);
+}
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-tab.dv-active-tab {
+  color: var(--qd-text-strong);
+}
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-tab.dv-inactive-tab:hover {
+  background: var(--qd-tab-hover-bg);
+  border-radius: 5px;
+}
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group .dv-active-tab .qd-tab-icon {
+  color: var(--qd-brand);
+}
+/* Focus brackets: four indigo corners over the whole plate, header included. */
+html[data-look="plate"]:not([data-theme="light"]) :is(.qd-dock, .dv-popout-window) .dv-groupview.dv-active-group::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  border-radius: 8px;
+  --b: var(--qd-brand);
+  background:
+    linear-gradient(var(--b), var(--b)) top left / 14px 2px no-repeat,
+    linear-gradient(var(--b), var(--b)) top left / 2px 14px no-repeat,
+    linear-gradient(var(--b), var(--b)) top right / 14px 2px no-repeat,
+    linear-gradient(var(--b), var(--b)) top right / 2px 14px no-repeat,
+    linear-gradient(var(--b), var(--b)) bottom left / 14px 2px no-repeat,
+    linear-gradient(var(--b), var(--b)) bottom left / 2px 14px no-repeat,
+    linear-gradient(var(--b), var(--b)) bottom right / 14px 2px no-repeat,
+    linear-gradient(var(--b), var(--b)) bottom right / 2px 14px no-repeat;
+}
+
+
+/*
+ * A pop-out window's own bar (shell/popoutBar.ts, 2026-10-22): the window has no Windows frame,
+ * so this is its title, drag area and caption buttons, in the nav bar's own colours. It sits on
+ * the pop-out's <body>, above dockview's container, so it is not scoped like the dock rules.
+ */
+.qd-popbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding-left: 12px;
+  background: var(--qd-nav-container-bg);
+  border-bottom: 1px solid var(--qd-nav-container-border);
+  color: var(--qd-nav-text);
+  font-family: inherit;
+  font-size: var(--qd-size-chrome);
+  line-height: var(--qd-leading-tight);
+  user-select: none;
+  cursor: default;
+}
+
+.qd-popbar-mark {
+  flex: 0 0 auto;
+  width: 2px;
+  height: 14px;
+  margin-right: 8px;
+  border-radius: 1px;
+  background: var(--qd-tb-mark);
+}
+
+.qd-popbar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--qd-weight-emphasis);
+}
+
+.qd-popbar-space {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+.qd-popbar-buttons {
+  display: flex;
+  align-self: stretch;
+  flex: 0 0 auto;
+}
+
+.qd-popbar-button {
+  width: 46px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--qd-nav-text);
+  cursor: default;
+  transition:
+    background-color var(--qd-dur-fast) var(--qd-ease),
+    color var(--qd-dur-fast) var(--qd-ease);
+}
+
+.qd-popbar-button:hover {
+  background: var(--qd-nav-hover-bg);
+  color: var(--qd-nav-hover-text);
+}
+
+.qd-popbar-close:hover {
+  background: var(--qd-window-close-bg);
+  color: var(--qd-window-close-text);
+}
+
+.qd-popbar-button:focus-visible {
+  outline: 2px solid var(--qd-focus);
+  outline-offset: -2px;
+}

@@ -1,0 +1,430 @@
+/* OPTLAB control system: one height, one radius family, one spacing scale.
+   Loaded after base.css so it owns every button, field and segmented control. */
+:root {
+  --ctl-h: 28px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --ctl-primary: rgb(var(--qd-wash) / 22%); /* frosted, dull white: a translucent key */
+  --ctl-primary-hover: rgb(var(--qd-wash) / 30%);
+  --ctl-on: #f2f2f7;
+  --ctl-fill: rgb(var(--qd-wash) / 8%);
+  --ctl-fill-hover: rgb(var(--qd-wash) / 14%);
+  --ctl-ring: 0 0 0 3px rgb(var(--qd-wash) / 20%);
+}
+:root[data-theme="light"] {
+  --ctl-primary: rgb(var(--qd-shade) / 16%);
+  --ctl-primary-hover: rgb(var(--qd-shade) / 24%);
+  --ctl-on: #1d1d1f;
+  --ctl-fill: rgb(var(--qd-shade) / 7%);
+  --ctl-fill-hover: rgb(var(--qd-shade) / 12%);
+}
+
+/* ---- buttons: soft pill, blue key action ---- */
+.tbtn {
+  height: var(--ctl-h);
+  padding: 0 14px;
+  gap: 6px;
+  border-radius: var(--qd-radius-button);
+  background: var(--ctl-fill);
+  color: var(--qd-text-primary);
+  font-weight: 400;
+}
+.tbtn:hover:not(:disabled) {
+  background: var(--ctl-fill-hover);
+  color: var(--qd-text-strong);
+}
+.tbtn:disabled {
+  opacity: 0.45;
+  background: var(--ctl-fill);
+}
+.tbtn:focus-visible {
+  outline: none;
+  box-shadow: var(--ctl-ring);
+}
+.tbtn.key {
+  background: var(--ctl-primary);
+  color: var(--ctl-on);
+  box-shadow: none;
+}
+.tbtn.key:hover:not(:disabled) {
+  background: var(--ctl-primary-hover);
+  color: var(--ctl-on);
+}
+.tbtn.chip {
+  border: 0;
+  padding: 0 12px;
+}
+.tbtn.chip.on,
+.tbtn.on {
+  background: var(--ctl-primary);
+  color: var(--ctl-on);
+  box-shadow: none;
+}
+.tbtn.icon {
+  width: var(--ctl-h);
+  padding: 0;
+  background: transparent;
+  color: var(--qd-text-secondary);
+}
+.tbtn.icon:hover:not(:disabled) {
+  background: var(--ctl-fill-hover);
+}
+.tbtn.tiny {
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--qd-radius-check);
+}
+
+/* ---- segmented control: pill track, raised thumb ---- */
+.seg {
+  height: var(--ctl-h);
+  padding: 2px;
+  gap: 0;
+  border: 0;
+  background: var(--ctl-fill);
+  border-radius: var(--qd-radius-button);
+}
+.seg button {
+  height: calc(var(--ctl-h) - 4px);
+  padding: 0 11px;
+  border-radius: var(--qd-radius-button);
+  color: var(--qd-text-secondary);
+  transition: background-color var(--qd-dur) var(--qd-ease), color var(--qd-dur) var(--qd-ease);
+}
+.seg button:hover:not(:disabled):not(.on) {
+  color: var(--qd-text-strong);
+}
+.seg button.on {
+  background: var(--qd-surface-3);
+  color: var(--qd-text-strong);
+  box-shadow: 0 1px 2px rgb(var(--qd-shade) / 45%), inset 0 0 0 1px rgb(var(--qd-wash) / 6%);
+}
+:root[data-theme="light"] .seg button.on {
+  background: #fff;
+}
+.seg button:focus-visible {
+  outline: none;
+  box-shadow: var(--ctl-ring);
+}
+
+/* ---- fields ---- */
+.field {
+  height: var(--ctl-h);
+  padding: 0 11px;
+  border-radius: 8px;
+  background: var(--ctl-fill);
+  border: 1px solid transparent;
+  color: var(--qd-text-strong);
+  transition: border-color var(--qd-dur) var(--qd-ease), background-color var(--qd-dur) var(--qd-ease), box-shadow var(--qd-dur) var(--qd-ease);
+}
+.field:hover:not(:disabled):not(:focus) {
+  background: var(--ctl-fill-hover);
+}
+.field:focus,
+.field:focus-visible {
+  outline: none;
+  border-color: rgb(var(--qd-wash) / 45%);
+  box-shadow: var(--ctl-ring);
+  background: var(--ctl-fill);
+}
+.field::placeholder {
+  color: var(--qd-text-tertiary);
+}
+.field:disabled {
+  opacity: 0.45;
+}
+input.field[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input.field[type="number"]::-webkit-inner-spin-button,
+input.field[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+select.field {
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%23a1a1a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  cursor: pointer;
+}
+select.field option {
+  background: var(--qd-surface-2);
+  color: var(--qd-text-primary);
+}
+
+/* ---- spacing rhythm for the Backtesting screen: 4 / 8 / 12 / 16 / 24 ---- */
+.form {
+  padding: var(--sp-2) var(--sp-4) var(--sp-5);
+}
+.tpl {
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.readback {
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-2);
+  border: 0;
+  border-radius: 10px;
+  background: var(--ctl-fill);
+}
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-2);
+  border-radius: 10px;
+}
+.sec {
+  padding: var(--sp-4) 0;
+}
+.sec-h {
+  min-height: var(--ctl-h);
+  margin-bottom: var(--sp-2);
+}
+.row {
+  gap: var(--sp-3) var(--sp-5);
+}
+.fld {
+  gap: 6px;
+}
+.fld .field.num {
+  width: 80px;
+}
+.unit {
+  gap: var(--sp-2);
+}
+.legform {
+  gap: 6px;
+  padding: 3px 0;
+}
+.legform .seg button {
+  padding: 0 8px;
+}
+.legform.head {
+  padding: 0 0 var(--sp-1);
+}
+.condrow {
+  gap: var(--sp-2) var(--sp-3);
+  padding: 3px 0;
+}
+.hint-line {
+  margin-top: var(--sp-3);
+}
+.vconf {
+  gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-4);
+}
+.axis {
+  gap: var(--sp-2);
+}
+.vnote {
+  margin: var(--sp-3) var(--sp-4) 0;
+}
+.heat-wrap {
+  padding: var(--sp-4);
+}
+.hcell {
+  border-radius: 8px;
+}
+.empty.compact {
+  padding: var(--sp-4) var(--sp-3);
+}
+
+/* strips hold pill buttons, so they need the same 16px gutter as the content below */
+.panel > .strip {
+  padding: 0 var(--sp-4);
+  gap: var(--sp-2);
+}
+
+/* ---- Strategy Builder: numbered steps on a rail, no boxes ---- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-5);
+  counter-reset: step;
+}
+.form > .tpl {
+  margin-bottom: var(--sp-3);
+}
+.form > .readback,
+.form > .notice {
+  margin: 0 0 var(--sp-5);
+}
+.form .readback {
+  border: 1px solid rgb(var(--qd-wash) / 10%);
+  background: rgb(var(--qd-wash) / 6%);
+  color: var(--qd-text-strong);
+}
+.form .sec {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 var(--sp-5) 40px;
+  border: 0;
+  background: none;
+}
+.form .sec::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--qd-wash) / 12%);
+  color: var(--qd-text-strong);
+  font-size: var(--qd-size-caption);
+  font-weight: var(--qd-weight-emphasis);
+}
+.form .sec::after {
+  content: "";
+  position: absolute;
+  left: 12.5px;
+  top: 34px;
+  bottom: 8px;
+  width: 1px;
+  background: rgb(var(--qd-wash) / 24%);
+}
+.form .sec:last-child {
+  padding-bottom: 0;
+}
+.form .sec:last-child::after {
+  display: none;
+}
+.form .sec-h {
+  min-height: 26px;
+  margin-bottom: var(--sp-3);
+}
+.form .sec-t {
+  font-size: var(--qd-size-body);
+  font-weight: var(--qd-weight-emphasis);
+  color: var(--qd-text-strong);
+}
+.form .field,
+.form .seg {
+  background: rgb(var(--qd-wash) / 9%);
+}
+.form .hint-line {
+  margin-top: var(--sp-3);
+}
+:root[data-theme="light"] .form .sec::after {
+  background: rgb(var(--qd-shade) / 14%);
+}
+
+/* ---- active state: a fully filled key, never a faint tint ---- */
+.seg button.on,
+:root[data-theme="light"] .seg button.on,
+.form .seg button.on,
+.tbtn.on,
+.tbtn.chip.on {
+  background: var(--ctl-primary);
+  color: var(--ctl-on);
+  font-weight: var(--qd-weight-emphasis);
+  box-shadow: inset 0 0 0 1px rgb(var(--qd-wash) / 14%);
+}
+.seg button.on:hover,
+.tbtn.on:hover:not(:disabled) {
+  background: var(--ctl-primary-hover);
+  color: var(--ctl-on);
+}
+.seg button:active:not(:disabled),
+.tbtn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.seg button:not(.on):hover:not(:disabled) {
+  background: var(--ctl-fill-hover);
+}
+.seg button:disabled {
+  opacity: 0.45;
+}
+/* nav bar screen switch and the replay step row use the same key */
+.seg button.on svg {
+  color: var(--ctl-on);
+}
+
+/* ---- one leg: a single readable row with a side marker ---- */
+.leg {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0 var(--sp-3) var(--sp-3);
+  border-top: 1px solid rgb(var(--qd-wash) / 8%);
+}
+.leg:first-of-type {
+  border-top: 0;
+}
+.leg::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--sp-3);
+  bottom: var(--sp-3);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--qd-negative);
+}
+.leg[data-side="buy"]::before {
+  background: var(--qd-positive);
+}
+.leg > .tbtn.icon {
+  margin-left: auto;
+}
+.leg select.field {
+  width: 140px;
+}
+.affix {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.affix .field.num {
+  width: 88px;
+  padding-right: 34px;
+}
+.affix > span {
+  position: absolute;
+  right: 12px;
+  color: var(--qd-text-tertiary);
+  pointer-events: none;
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  height: var(--ctl-h);
+  background: rgb(var(--qd-wash) / 9%);
+  border-radius: var(--qd-radius-button);
+}
+.stepper button {
+  width: var(--ctl-h);
+  height: var(--ctl-h);
+  border-radius: 50%;
+  color: var(--qd-text-primary);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+.stepper button:hover:not(:disabled) {
+  background: var(--ctl-fill-hover);
+  color: var(--qd-text-strong);
+}
+.stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.stepper .qty {
+  min-width: 48px;
+  text-align: center;
+  color: var(--qd-text-strong);
+}

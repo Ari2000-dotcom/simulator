@@ -1,0 +1,25 @@
+{
+  "name": "optlab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "tauri": "tauri",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.5",
+    "dockview-core": "^3.2.0",
+    "lucide-solid": "^1.76.0",
+    "solid-js": "^1.9.19"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-solid": "^2.11.17",
+    "vitest": "^5.1.1"
+  }
+}

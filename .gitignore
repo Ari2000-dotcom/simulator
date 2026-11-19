@@ -1,0 +1,27 @@
+# data store and archives: far too large for git, shared separately (see README)
+asset=NIFTY/
+asset=NIFTY.zip
+*.zip
+*.parquet
+*.npy
+
+# scratch and logs
+_logs/
+_tmp/
+
+# builds and dependencies
+app/node_modules/
+app/target/
+app/dist/
+app/src-tauri/gen/
+node_modules/
+target/
+dist/
+
+# editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+.env
